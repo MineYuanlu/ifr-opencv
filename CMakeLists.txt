@@ -35,7 +35,7 @@ include_directories(lib/basic)
 
 #aux_source_directory(${PROJECT_SOURCE_DIR}/lib LIBX)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src SRCX)
-add_executable(${PROJECT_NAME} ${SRCX})
+add_executable(${PROJECT_NAME} src/main.cpp ${SRCX})
 #添加链接库
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${OpenCV_LIBS} gxiapi.so -lpthread -lm)
 
