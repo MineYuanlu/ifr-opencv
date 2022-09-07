@@ -14,6 +14,17 @@ set(CMAKE_SYSROOT "${SYSROOT_PATH}")
 set(CMAKE_FIND_ROOT_PATH "${SYSROOT_PATH}" "${CMAKE_PREFIX_PATH}" "${TOOLCHAIN_PATH}")
 
 
+add_compile_options(-Wall -Werror=return-type -Wno-unused-variable)
+if (CMAKE_BUILD_TYPE STREQUAL Release)
+    add_compile_options(-O3 -flto -march=native)
+elseif (CMAKE_BUILD_TYPE STREQUAL RelWithDebInfo)
+    add_compile_options(-O3 -flto -march=native -g)
+elseif (CMAKE_BUILD_TYPE STREQUAL MinSizeRel)
+    add_compile_options(-Os -flto -march=native)
+else ()
+    add_compile_options(-O0 -g)
+endif ()
+
 #寻找OpenCV库
 FIND_PACKAGE(OpenCV REQUIRED)
 # directory of opencv headers

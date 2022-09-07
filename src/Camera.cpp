@@ -112,6 +112,7 @@ namespace ifr {
 
             std::cout << "Camera turned on successfully" << std::endl;
 
+            return 0;
         }
 
         void stopCamera() {
