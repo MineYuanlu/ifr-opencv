@@ -5,20 +5,24 @@
 
 #if !defined(__KERNEL__)
 #  if !defined(__cplusplus)
+
 #    include <stdio.h>
+
 #  else
+
 #    include <cstdio>
+
 #  endif
 #endif
 
 #if !defined(__GNUC__) && !defined(__MINGW32__) && !defined(__MINGW64__) \
-   && !defined(_MSC_VER)
+ && !defined(_MSC_VER)
 #  pragma message ("Unsupported compiler. Some extended grammars not applied. Supported compilers: GCC, MinGW, MSVC")
 #endif
 
 
 #if !defined(__x86_64__) && !defined(_M_AMD64) && !defined(_M_X64) && !defined(__ARM_ARCH) \
-   && !defined(_M_ARM)
+ && !defined(_M_ARM)
 #  pragma message ("Unrecognized architecture. Some functions might go wrong. Supported architectures: x64, ARM")
 #  pragma message ("If you are exactly using x64 or ARM, please contact with the developer.")
 #endif
@@ -149,7 +153,7 @@
 #  if defined(__cplusplus)
 #    define __EXPORT_C_START extern "C"{
 #  else
-#    define __EXPORT_C_START 
+#    define __EXPORT_C_START
 #  endif
 #elif defined(Wdefine_ext_funcs)
 #  pragma message ("Macro '__EXPORT_C_START' has already be defined, which is used in ext_funcs.h")
@@ -159,7 +163,7 @@
 #  if defined(__cplusplus)
 #    define __EXPORT_C_END }
 #  else
-#    define __EXPORT_C_END 
+#    define __EXPORT_C_END
 #  endif
 #elif defined(Wdefine_ext_funcs)
 #  pragma message ("Macro '__EXPORT_C_END' has already be defined, which is used in ext_funcs.h")

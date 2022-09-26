@@ -274,7 +274,7 @@ namespace umt {
             p_msg->pubs.remove(this);
             if (p_msg->pubs.empty()) {
                 std::unique_lock<std::mutex> subs_lock(p_msg->subs_mtx);
-                for (const auto &sub : p_msg->subs) {
+                for (const auto &sub: p_msg->subs) {
                     sub->notify();
                 }
             }
@@ -299,7 +299,7 @@ namespace umt {
         void push(const T &obj) {
             if (!p_msg) throw MessageError_Empty();
             std::unique_lock<std::mutex> subs_lock(p_msg->subs_mtx);
-            for (auto &sub : p_msg->subs) {
+            for (auto &sub: p_msg->subs) {
                 sub->write_obj(obj);
                 sub->notify();
             }

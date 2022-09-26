@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" remoteFilesAllowedToDisappearOnAutoupload="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="IFR TX (b45ec257-a3ae-4986-bb2b-6e9d100048e1)" remoteFilesAllowedToDisappearOnAutoupload="false" confirmBeforeUploading="false">
+    <option name="confirmBeforeUploading" value="false" />
     <serverData>
       <paths name="IFR TX (b45ec257-a3ae-4986-bb2b-6e9d100048e1)">
         <serverdata>
@@ -8,16 +9,20 @@
             <mapping deploy="2022-yuanlu" local="$PROJECT_DIR$" />
           </mappings>
           <excludedPaths>
-            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-tx1" />
-            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-tx1" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-tx1" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-tx1" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-tx1-" />
             <excludedPath local="true" path="$PROJECT_DIR$/web/node_modules" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug" />
-            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-tx1-" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-" />
+            <excludedPath local="true" path="$PROJECT_DIR$/.git" />
           </excludedPaths>
         </serverdata>
       </paths>
     </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
   </component>
 </project>

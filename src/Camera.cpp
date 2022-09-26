@@ -4,10 +4,6 @@
 
 #include "Camera.h"
 
-#include <GxIAPI.h>
-#include <DxImageProc.h>
-#include<opencv2/opencv.hpp>
-#include<iostream>
 
 typedef unsigned char BYTE;
 
@@ -20,21 +16,28 @@ namespace ifr {
         BYTE *m_pBufferRGB;             //RGB图像数据，用于显示和保存bmp图像
         int64_t m_nImageHeight;         //原始图像高
         int64_t m_nImageWidth;          //原始图像宽
-        int64_t m_nPayLoadSize;
+        int64_t m_nPayLoadSize;         //数据大小
         int64_t m_nPixelColorFilter;    //Bayer格式
-        cv::Mat src;                    //原始图像
-        umt::Publisher<cv::Mat> publisher(MSG_CAMERA);//发布者
+        int64_t m_nPixelSize;           //像素深度
+        umt::Publisher<datas::FrameData> publisher(MSG_CAMERA);//发布者
+#if DEBUG
+        uint64 id = 0;//更新ID
+#endif
+
 
         /*图像回调处理函数*/
         static void GX_STDC OnFrameCallbackFun(GX_FRAME_CALLBACK_PARAM *pFrame) {
             if (pFrame->status == 0) {
-                memcpy(m_pBufferRaw, pFrame->pImgBuf, pFrame->nImgSize);
+                cv::Mat src(m_nImageHeight, m_nImageWidth, CV_8UC1, (void *) pFrame->pImgBuf);
+                publisher.push({src, pFrame->nFrameID, pFrame->nTimestamp});
+#if DEBUG
+                if (id + 1 != pFrame->nFrameID)
+                    std::cout << "[相机] 跳跃ID: " << id << ' ' << pFrame->nTimestamp << " " << pFrame->pImgBuf << " "
+                              << pFrame->nImgSize
+                              << std::endl;
+                id = pFrame->nFrameID;
+#endif
 
-                // RGB转换
-                DxRaw8toRGB24(m_pBufferRaw, m_pBufferRGB, (VxUint32) (m_nImageWidth), (VxUint32) (m_nImageHeight),
-                              RAW2RGB_NEIGHBOUR, DX_PIXEL_COLOR_FILTER(m_nPixelColorFilter), false);
-                memcpy(src.data, m_pBufferRGB, m_nImageWidth * m_nImageHeight * 3);
-                publisher.push(src);
             }
         }
 
@@ -63,7 +66,7 @@ namespace ifr {
             emStatus = GXSetEnum(m_hDevice, GX_ENUM_BALANCE_WHITE_AUTO, GX_BALANCE_WHITE_AUTO_CONTINUOUS);
             //设置自动曝光
             emStatus = GXSetEnum(m_hDevice, GX_ENUM_EXPOSURE_AUTO, GX_EXPOSURE_AUTO_OFF);    //关闭自动曝光
-            emStatus = GXSetFloat(m_hDevice, GX_FLOAT_EXPOSURE_TIME, 10000.0000); //初始曝光时间
+            emStatus = GXSetFloat(m_hDevice, GX_FLOAT_EXPOSURE_TIME, 2000.0000); //初始曝光时间
             //emStatus = GXSetEnum(m_hDevice, GX_ENUM_EXPOSURE_AUTO, GX_EXPOSURE_AUTO_CONTINUOUS);//自动曝光
             //emStatus = GXSetFloat(m_hDevice, GX_FLOAT_AUTO_EXPOSURE_TIME_MIN, 20.0000);//自动曝光最小值
             //emStatus = GXSetFloat(m_hDevice, GX_FLOAT_AUTO_EXPOSURE_TIME_MAX, 100000.0000);//自动曝光最大值
@@ -75,18 +78,15 @@ namespace ifr {
                                  GX_AWB_LAMP_HOUSE_ADAPTIVE);                    //自动白平衡光源
 
             //bool      bColorFliter = false;
-            // 获取图像大小
-            emStatus = GXGetInt(m_hDevice, GX_INT_PAYLOAD_SIZE, &m_nPayLoadSize);
-            // 获取宽度
-            emStatus = GXGetInt(m_hDevice, GX_INT_WIDTH, &m_nImageWidth);
-            // 获取高度
-            emStatus = GXGetInt(m_hDevice, GX_INT_HEIGHT, &m_nImageHeight);
+            emStatus = GXGetInt(m_hDevice, GX_INT_PAYLOAD_SIZE, &m_nPayLoadSize);  // 获取图像大小
+            emStatus = GXGetInt(m_hDevice, GX_INT_WIDTH, &m_nImageWidth); // 获取宽度
+            emStatus = GXGetInt(m_hDevice, GX_INT_HEIGHT, &m_nImageHeight);// 获取高度
+            emStatus = GXGetEnum(m_hDevice, GX_ENUM_PIXEL_SIZE, &m_nPixelSize);
             //GXSetFloat(m_hDevice, GX_FLOAT_EXPOSURE_TIME, 20000);
             if (!(m_nImageHeight > 0 && m_nImageWidth > 0)) {
                 std::cout << "Unable to open camera" << std::endl;
                 return -1;
             }
-            src.create((int) m_nImageHeight, (int) m_nImageWidth, CV_8UC3);
             //判断相机是否支持bayer格式
             bool m_bColorFilter;
             emStatus = GXIsImplemented(m_hDevice, GX_ENUM_PIXEL_COLOR_FILTER, &m_bColorFilter);
@@ -102,7 +102,8 @@ namespace ifr {
             if (m_pBufferRaw == nullptr) {
                 delete[] m_pBufferRGB;
                 m_pBufferRGB = nullptr;
-                return false;
+                std::cout << "Unable to request memory space" << std::endl;
+                return -1;
             }
             //注册图像处理回调函数
             emStatus = GXRegisterCaptureCallback(m_hDevice, nullptr, OnFrameCallbackFun);
@@ -131,6 +132,18 @@ namespace ifr {
             }
             emStatus = GXCloseDevice(m_hDevice);
             emStatus = GXCloseLib();
+        }
+
+        int getHeight() {
+            return m_nImageHeight;
+        }
+
+        int getWidth() {
+            return m_nImageWidth;
+        }
+
+        cv::Mat getSrc() {
+            return cv::Mat();
         }
     }
 

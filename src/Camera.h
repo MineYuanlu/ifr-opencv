@@ -5,11 +5,13 @@
 #ifndef IFR_OPENCV_CAMERA_H
 #define IFR_OPENCV_CAMERA_H
 
-#define MSG_CAMERA "camera"
+#include "defs.h"
+
 
 #include <GxIAPI.h>
 #include <DxImageProc.h>
 #include<opencv2/opencv.hpp>
+#include<iostream>
 #include <umt/umt.hpp>
 
 typedef unsigned char BYTE;
@@ -19,12 +21,19 @@ namespace ifr {
      * 代表相机接口
      */
     namespace Camera {
-        /**
-         * 启动相机, 相机将在"camera"上推送Mat
-         */
+
+
+        /**启动相机*/
         int runCamera();
 
+        /**停止相机*/
         void stopCamera();
+
+        /**@return 图像高度*/
+        int getHeight();
+
+        /**@return 图像宽度*/
+        int getWidth();
     };
 
 } // ifr
