@@ -3,6 +3,7 @@
 //
 
 #include "Record.h"
+#include <thread>
 
 namespace ifr {
     namespace Record {

@@ -38,7 +38,9 @@ namespace EM {
     ) {
         auto t_start = getTickCount();
         Mat img1;
+#if USE_GPU
         cuda::GpuMat gpuMat;
+#endif
         DEBUG_nowTime(t_0)
 #if USE_GPU
         gpuMat.upload(src);
@@ -81,22 +83,24 @@ namespace EM {
         times["寻找"] = (t_5 - t_4) / getTickFrequency() * 1000;
 #endif
 #if DEBUG_IMG
-        Mat imgShow = img1.clone();
-        Tools::c1to3(imgShow);
-        putText(imgShow, "fps: " + to_string(fps), Point(0, 50),
-                FONT_HERSHEY_COMPLEX, 1, Scalar(0, 255, 0));
-        putText(imgShow, "sub_fps: " + to_string(1 / ((t_1 - t_0) / getTickFrequency())) + ", " +
-                         to_string(1 / ((t_2 - t_1) / getTickFrequency())) + ", " +
-                         to_string(1 / ((t_3 - t_2) / getTickFrequency())),
-                Point(0, 100),
-                FONT_HERSHEY_COMPLEX, 1, Scalar(0, 255, 0));
-        putText(imgShow, "active: " + to_string(ti.activeCount), Point(0, 150),
-                FONT_HERSHEY_COMPLEX, 1,
-                Scalar(0, ti.activeCount > 0 ? 255 : 0, ti.activeCount > 0 ? 0 : 255));
-        Tools::drawRotatedRect(imgShow, ti.nowTarget);
-        Tools::drawRotatedRect(imgShow, ti.nowTargetAim);
-        m_imshow("img", imgShow);
-        waitKey(20);
+        debug_img = img1;
+        debug_ti = ti;
+//        Mat imgShow = img1.clone();
+//        Tools::c1to3(imgShow);
+//        putText(imgShow, "fps: " + to_string(fps), Point(0, 50),
+//                FONT_HERSHEY_COMPLEX, 1, Scalar(0, 255, 0));
+//        putText(imgShow, "sub_fps: " + to_string(1 / ((t_1 - t_0) / getTickFrequency())) + ", " +
+//                         to_string(1 / ((t_2 - t_1) / getTickFrequency())) + ", " +
+//                         to_string(1 / ((t_3 - t_2) / getTickFrequency())),
+//                Point(0, 100),
+//                FONT_HERSHEY_COMPLEX, 1, Scalar(0, 255, 0));
+//        putText(imgShow, "active: " + to_string(ti.activeCount), Point(0, 150),
+//                FONT_HERSHEY_COMPLEX, 1,
+//                Scalar(0, ti.activeCount > 0 ? 255 : 0, ti.activeCount > 0 ? 0 : 255));
+//        Tools::drawRotatedRect(imgShow, ti.nowTarget);
+//        Tools::drawRotatedRect(imgShow, ti.nowTargetAim);
+//        m_imshow("img", imgShow);
+//        waitKey(20);
 #endif
         auto t_end = getTickCount();
         ti.size = img1.size();
@@ -104,6 +108,7 @@ namespace EM {
         return ti;
     }
 
+#if USE_GPU
     void Tools::c1to3(cv::cuda::GpuMat &mat) {
         if (mat.channels() == 3) return;
         if (mat.channels() != 1) throw invalid_argument("通道数不等于1或3");
@@ -111,6 +116,7 @@ namespace EM {
         vector<cv::cuda::GpuMat> channels(3, mat);
         cv::cuda::merge(channels, mat);
     }
+#endif
 
     void Tools::c1to3(cv::Mat &mat) {
         if (mat.channels() == 3) return;
@@ -227,6 +233,7 @@ namespace EM {
         }
     }
 
+#if USE_GPU
     void Tools::drawRotatedRect(cv::cuda::GpuMat &mat, const RotatedRect &box) {
         /**4点缓冲区*/
         Point2f points[4];
@@ -237,6 +244,7 @@ namespace EM {
                  cv::Scalar(255, 100, 200), 2, LINE_AA);
         }
     }
+#endif
 
     void Tools::drawRotatedRect(cv::Mat &mat, const RotatedRect &box) {
         /**4点缓冲区*/

@@ -46,12 +46,13 @@ namespace EM {
 
     AimEM::AimEM() {
         readValue();
-#if DEBUG_AIM && 0
-        cv::namedWindow(WINNAME_AIM_VAL, cv::WINDOW_NORMAL);
+#if DEBUG_AIM
+//        cv::namedWindow(WINNAME_AIM_VAL, cv::WINDOW_NORMAL);
         cv::namedWindow(WINNAME_AIM_IMG, cv::WINDOW_NORMAL);
-        cv::resizeWindow(WINNAME_AIM_VAL, 200, 200);
+//        cv::resizeWindow(WINNAME_AIM_VAL, 200, 200);
         std::thread([this] {
             while (true) {
+                if (target.x <= 0 || target.y <= 0 || go.x <= 0 || go.y <= 0 || size.area() <= 0)continue;
                 const auto size0 = size.area() > 0 ? size : cv::Size(1920, 1200);
                 cv::Mat mat(size0, CV_8UC3, cv::Scalar(0, 0, 0));
                 cv::line(mat, target, go, cv::Scalar(100, 0, 255), 5);

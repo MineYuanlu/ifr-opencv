@@ -3,6 +3,7 @@
 //
 
 #include "Camera.h"
+#include "Signal.h"
 
 
 typedef unsigned char BYTE;
@@ -30,6 +31,7 @@ namespace ifr {
             if (pFrame->status == 0) {
                 cv::Mat src(m_nImageHeight, m_nImageWidth, CV_8UC1, (void *) pFrame->pImgBuf);
                 publisher.push({src, pFrame->nFrameID, pFrame->nTimestamp});
+                ifr::Signal::feed_dog();//喂狗
 #if DEBUG
                 if (id + 1 != pFrame->nFrameID)
                     std::cout << "[相机] 跳跃ID: " << id << ' ' << pFrame->nTimestamp << " " << pFrame->pImgBuf << " "
@@ -47,16 +49,16 @@ namespace ifr {
             uint32_t nDeviceNum = 0;
             openParam.accessMode = GX_ACCESS_EXCLUSIVE;
             openParam.openMode = GX_OPEN_INDEX;
-            openParam.pszContent = "1";
+            openParam.pszContent = new char[2]{'1', '\0'};
             // 初始化库
             emStatus = GXInitLib();
             if (emStatus != GX_STATUS_SUCCESS) {
-                return 0;
+                return -1;
             }
             // 枚举设备列表
             emStatus = GXUpdateDeviceList(&nDeviceNum, 1000);
             if ((emStatus != GX_STATUS_SUCCESS) || (nDeviceNum <= 0)) {
-                return 0;
+                return -1;
             }
             //打开设备
             emStatus = GXOpenDevice(&openParam, &m_hDevice);
@@ -95,7 +97,7 @@ namespace ifr {
             }
             m_pBufferRGB = new BYTE[(size_t) (m_nImageWidth * m_nImageHeight * 3)];
             if (m_pBufferRGB == nullptr) {
-                return false;
+                return -1;
             }
             //为存储原始图像数据申请空间
             m_pBufferRaw = new BYTE[(size_t) m_nPayLoadSize];
@@ -113,7 +115,7 @@ namespace ifr {
 
             std::cout << "Camera turned on successfully" << std::endl;
 
-            return 0;
+            return 1;
         }
 
         void stopCamera() {

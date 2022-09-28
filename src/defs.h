@@ -10,7 +10,7 @@
 #define DEBUG 1 //调试模式总开关
 
 #define DEBUG_TIME (DEBUG && 0 ) //是否输出耗时信息
-#define DEBUG_IMG (DEBUG && 0 ) //是否显示图片
+#define DEBUG_IMG (DEBUG && 1 ) //是否显示图片
 #define DEBUG_AIM (DEBUG && 1 ) //是否调试瞄准
 
 #if DEBUG_TIME || DEBUG_IMG

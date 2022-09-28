@@ -56,12 +56,13 @@ namespace EM {
          */
         void prepare(const XMat &src, XMat &dist);
 
-
+#if USE_GPU
         /**
          * 单通道转3通道
          * @param mat
          */
         void c1to3(cv::cuda::GpuMat &mat);
+#endif
 
         /**
          * 单通道转3通道
@@ -80,11 +81,13 @@ namespace EM {
          */
         void drawContours(const vector<vector<Point>> &contours, Mat &mat, bool drawRect = true);
 
+#if USE_GPU
         /**
          * 绘制旋转矩形
          * @param box 旋转矩形
          */
         void drawRotatedRect(cv::cuda::GpuMat &mat, const RotatedRect &box);
+#endif
 
         /**
          * 绘制旋转矩形
@@ -238,6 +241,10 @@ namespace EM {
         /**处理帧率*/
         double fps = 0;
 #endif
+#if DEBUG_IMG
+        Mat debug_img;
+        datas::TargetInfo debug_ti;
+#endif
         const int thread_id;//处理线程ID
     public:
         /**
@@ -258,9 +265,28 @@ namespace EM {
         Finder(int id) : thread_id(id) {
 #if DEBUG_IMG
             namedWindow(to_string(id) + " img", WINDOW_NORMAL);
-            namedWindow(to_string(id) + " pre1", WINDOW_NORMAL);
-            namedWindow(to_string(id) + " pre2", WINDOW_NORMAL);
-            namedWindow(to_string(id) + " pre3", WINDOW_NORMAL);
+            thread([this]() {
+                while (true) {
+                    if (debug_img.size().area() <= 1)continue;
+                    Mat imgShow = debug_img.clone();
+                    auto ti = debug_ti;
+                    Tools::c1to3(imgShow);
+                    putText(imgShow, "fps: " + to_string(fps), Point(0, 50),
+                            FONT_HERSHEY_COMPLEX, 1, Scalar(0, 255, 0));
+//                    putText(imgShow, "sub_fps: " + to_string(1 / ((t_1 - t_0) / getTickFrequency())) + ", " +
+//                                     to_string(1 / ((t_2 - t_1) / getTickFrequency())) + ", " +
+//                                     to_string(1 / ((t_3 - t_2) / getTickFrequency())),
+//                            Point(0, 100),
+//                            FONT_HERSHEY_COMPLEX, 1, Scalar(0, 255, 0));
+                    putText(imgShow, "active: " + to_string(ti.activeCount), Point(0, 150),
+                            FONT_HERSHEY_COMPLEX, 1,
+                            Scalar(0, ti.activeCount > 0 ? 255 : 0, ti.activeCount > 0 ? 0 : 255));
+                    Tools::drawRotatedRect(imgShow, ti.nowTarget);
+                    Tools::drawRotatedRect(imgShow, ti.nowTargetAim);
+                    m_imshow("img", imgShow);
+                    waitKey(20);
+                }
+            }).detach();
 #endif
         }
 

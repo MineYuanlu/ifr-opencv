@@ -35,7 +35,8 @@ namespace EM {
 #elif DATA_OUT_PRINT
 
         void output(const datas::OutInfo &info) {
-            std::cout << info.velocity << " " << info.activeCount << " " << info.delay << std::endl;
+            std::cout << "target: " << info.targetType << ", vector: " << (-info.velocity.x) << " " << (info.velocity.y)
+                      << ", active: " << info.activeCount << ", delay: " << info.delay << std::endl;
         }
 
 #endif

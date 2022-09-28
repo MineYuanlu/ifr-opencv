@@ -1,13 +1,14 @@
 #include <iostream>
 
 #include "umt/umt.hpp"
-#include<thread>
+#include <thread>
 #include "Camera.h"
 #include "Record.h"
 #include "FinderEM.h"
 #include "DataWaiter.h"
 #include "AimEM.h"
 #include "OutputEM.h"
+#include "Signal.h"
 
 using namespace std;
 using namespace cv;
@@ -27,37 +28,53 @@ int main() {
     system("pwd");
 
     start();
-    while (true);
+
     return -1;
 }
 
 void start() {
+
+    ifr::Signal::open_dog_thread(4.0);
 #if DATA_IN_CAMERA
-    thread(ifr::Camera::runCamera).detach();
+    while (ifr::Camera::runCamera() < 0) {
+        ifr::Camera::stopCamera();
+        cout << "Open camera faile.\n";
+    }
+    //auto CameraThread = thread(ifr::Camera::runCamera);// .detach();
+    //while (!CameraThread.joinable());
 #endif
 #if DATA_IN_VIDEO
     //TODO
 #endif
-
     ifr::DataWaiter<uint64_t, datas::TargetInfo> dw;
 
-    thread([&dw]() {//识别 - 预测 - 发送
+    thread MainProgressThread = thread([&dw]() {//识别 - 预测 - 发送
         umt::Publisher<datas::OutInfo> goOut(MSG_OUTPUT);//发布者
         while (true) {
             const auto data = dw.pop();
             const auto out = EM::aimEm.handle(data.first, data.second);
             goOut.push(out);
         }
-    }).detach();
-    thread([] {//输出
+    });
+
+    while (!MainProgressThread.joinable());
+    //MainProgressThread.detach();
+
+    thread DataOutputThread = thread([] {//输出
         EM::Output::open();
         umt::Subscriber<datas::OutInfo> goIn(MSG_OUTPUT);
         while (true)EM::Output::output(goIn.pop());
-    }).detach();
+    });
+
+    while (!DataOutputThread.joinable());
+    //DataOutputThread.detach();
+
+    thread *VisionThreads;
+    VisionThreads = new thread[THREAD_IDENTITY];
 
     for (int i = 1; i <= THREAD_IDENTITY; i++) {
         cout << "启动识别线程 " << i << endl;
-        thread([&dw, i]() {
+        VisionThreads[i - 1] = thread([&dw, i]() {
             umt::Subscriber<datas::FrameData> fdIn(MSG_CAMERA);
             EM::Finder finder(i);
 #if DEBUG_TIME
@@ -80,8 +97,13 @@ void start() {
                 ti.time = data.time;
                 dw.finish(data.id, ti);
             }
-        }).detach();
+        });
+
+        while (!VisionThreads[i - 1].joinable());
+        //VisionThreads[i - 1].detach();
     }
+
+    while (true);
 }
 
 #if DEBUG_TIME
