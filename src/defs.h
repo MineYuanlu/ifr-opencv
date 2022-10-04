@@ -6,12 +6,13 @@
 #define OPENCV_TEST_DEFS_H
 
 #include<opencv2/opencv.hpp>
+#include <stdio.h>
 
 #define DEBUG 1 //调试模式总开关
 
 #define DEBUG_TIME (DEBUG && 0 ) //是否输出耗时信息
 #define DEBUG_IMG (DEBUG && 1 ) //是否显示图片
-#define DEBUG_AIM (DEBUG && 1 ) //是否调试瞄准
+#define DEBUG_AIM (DEBUG && 0 ) //是否调试瞄准
 
 #if DEBUG_TIME || DEBUG_IMG
 #define DEBUG_nowTime(name) auto name = getTickCount();
@@ -41,10 +42,11 @@
 #if DEBUG
 #define SIMPLE_INSPECT(__Expr__) \
    printf("Expression %s : %d\n", #__Expr__, __Expr__)
+#define OUTPUT(line) std::cout<<line<<std::endl;
 #else
 #define SIMPLE_INSPECT(__Expr__) __Expr__
+#define OUTPUT(line)
 #endif
-
 
 namespace datas {
     /**一帧数据*/
@@ -52,6 +54,7 @@ namespace datas {
         cv::Mat mat;//图像
         uint64_t id;//帧ID (来自相机)
         uint64_t time; //帧时间戳(来自相机)
+        int64 receiveTick;// 接收到图像时的tick
     };
     /**目标信息*/
     struct TargetInfo {
@@ -62,12 +65,14 @@ namespace datas {
         cv::Size size;//画面大小
         uint64_t time; //帧时间戳(来自相机)
         int64 delay;//处理时长
+        int64 receiveTick;// 接收到图像时的tick
     };
     struct OutInfo {
         int targetType;//目标类型 0 :未找到 1:找到但不确定 2: 确定
         int activeCount;//激活数量
         cv::Point2f velocity;//移动矢量
         int64 delay;//处理延时
+        int64 receiveTick;// 接收到图像时的tick
     };
 }
 #endif //OPENCV_TEST_DEFS_H

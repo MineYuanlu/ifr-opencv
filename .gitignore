@@ -468,3 +468,5 @@ FodyWeavers.xsd
 /cmake-build-debug-tx1/
 
 /cmake-build-*
+
+/aim.txt

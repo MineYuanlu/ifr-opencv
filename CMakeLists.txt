@@ -60,7 +60,7 @@ include_directories(lib)
 
 aux_source_directory(${PROJECT_SOURCE_DIR}/lib/basic LIB_BASIC)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src SRCX)
-add_executable(${PROJECT_NAME} src/main.cpp src/FinderEM.cpp src/DataWaiter.h src/AimEM.cpp src/AimEM.h src/Camera.cpp ${SRCX} ${LIB_BASIC} src/API.cpp src/API.h)
+add_executable(${PROJECT_NAME} src/main.cpp src/FinderEM.cpp src/DataWaiter.h src/AimEM.cpp src/AimEM.h src/Camera.cpp ${SRCX} ${LIB_BASIC} src/API.cpp src/API.h src/ImgDisplay.cpp src/ImgDisplay.h)
 #添加链接库
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${OpenCV_LIBS} gxiapi.so -lpthread -lm)
 

@@ -9,7 +9,7 @@
 #ifndef IFR_OPENCV_FORECASTEM_H
 #define IFR_OPENCV_FORECASTEM_H
 
-#if DEBUG_AIM
+#if DEBUG_IMG || DEBUG_AIM
 #define WINNAME_AIM_VAL "aim values"
 #define WINNAME_AIM_IMG "aim img"
 #define AIM_TBAR_MIDDLE 5000

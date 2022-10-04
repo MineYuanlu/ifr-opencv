@@ -1,7 +1,7 @@
 #include <iostream>
-
 #include "umt/umt.hpp"
 #include <thread>
+#include "defs.h"
 #include "Camera.h"
 #include "Record.h"
 #include "FinderEM.h"
@@ -33,15 +33,13 @@ int main() {
 }
 
 void start() {
-
+    OUTPUT("开始启动")
     ifr::Signal::open_dog_thread(4.0);
 #if DATA_IN_CAMERA
     while (ifr::Camera::runCamera() < 0) {
         ifr::Camera::stopCamera();
         cout << "Open camera faile.\n";
     }
-    //auto CameraThread = thread(ifr::Camera::runCamera);// .detach();
-    //while (!CameraThread.joinable());
 #endif
 #if DATA_IN_VIDEO
     //TODO
@@ -95,6 +93,7 @@ void start() {
                 timeOut.push({times, data.id});
 #endif
                 ti.time = data.time;
+                ti.receiveTick = data.receiveTick;
                 dw.finish(data.id, ti);
             }
         });

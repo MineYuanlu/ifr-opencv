@@ -3,6 +3,7 @@
 //
 
 #include "OutputEM.h"
+#include <stdio.h>
 
 namespace EM {
 
@@ -15,10 +16,11 @@ namespace EM {
 #if DATA_OUT_PORT
 
         void output(const datas::OutInfo &info) {
+            int64 delay = (cv::getTickCount() - info.receiveTick) / cv::getTickFrequency() * 1000;
             port_data_out[1] = info.targetType;
             *(short *) (port_data_out + 2) = (short) (-info.velocity.x);
             *(short *) (port_data_out + 4) = (short) (info.velocity.y);
-            *(uint8_t *) (port_data_out + 6) = (uint8_t) info.delay;
+            *(uint8_t *) (port_data_out + 6) = (uint8_t) delay;
             short sum_check =
                     short(-info.velocity.x) + short(info.velocity.y) +
                     short(port_data_out[1]) +
@@ -27,16 +29,16 @@ namespace EM {
             std::swap(port_data_out[2], port_data_out[3]);
             std::swap(port_data_out[4], port_data_out[5]);
             std::swap(port_data_out[15], port_data_out[16]);
-            std::cout << "target: " << info.targetType << ", vector: " << (-info.velocity.x) << " " << (info.velocity.y)
-                      << ", active: " << info.activeCount << ", delay: " << info.delay << std::endl;
+            printf("T: %d,vec: [%9.3f, %9.3f], a: %d, delay: %ld\n", info.targetType, -info.velocity.x, info.velocity.y,
+                   info.activeCount, delay);
             serial_port_write(device, port_data_out, 17);
         }
 
 #elif DATA_OUT_PRINT
 
         void output(const datas::OutInfo &info) {
-            std::cout << "target: " << info.targetType << ", vector: " << (-info.velocity.x) << " " << (info.velocity.y)
-                      << ", active: " << info.activeCount << ", delay: " << info.delay << std::endl;
+            printf("T: %d,vec: [%9.3f, %9.3f], a: %d, delay: %ld\n", info.targetType, -info.velocity.x, info.velocity.y,
+                   info.activeCount, info.delay);
         }
 
 #endif

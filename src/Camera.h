@@ -27,7 +27,7 @@ namespace ifr {
         int runCamera();
 
         /**停止相机*/
-        void stopCamera();
+        GX_STATUS stopCamera();
 
         /**@return 图像高度*/
         int getHeight();

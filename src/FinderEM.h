@@ -12,6 +12,7 @@
 #include <random>
 #include "defs.h"
 #include "Record.h"
+#include "ImgDisplay.h"
 
 #if USE_GPU
 
@@ -183,7 +184,23 @@ namespace EM {
             return INFINITY;
         }
 
+
+        const RotatedRect getFirstSubRRect(const vector<vector<Point>> &contours, const vector<Vec4i> &hierarchy,
+                                           size_t index, vector<RotatedRect> &cache) {
+            if (cache.size() < hierarchy.size())cache.resize(hierarchy.size());
+            const auto S = getRrect(contours, cache, index).size.area();
+            for (auto i = hierarchy[index][2]; i >= 0; i = hierarchy[i][0]) {
+                const auto rr = getRrect(contours, cache, i);
+                if (rr.size.area() * ignoreFactor < S)continue;
+                return rr;
+            }
+            return RotatedRect();
+        }
+
     private:
+        /**
+         * 使用缓存获取rr框(带缓存)
+         */
         static RotatedRect &
         getRrect(const vector<vector<Point>> &contours, vector<RotatedRect> &cache, const size_t index) {
             if (cache[index].size.area() <= 0)cache[index] = minAreaRect(contours[index]);
@@ -242,7 +259,7 @@ namespace EM {
         double fps = 0;
 #endif
 #if DEBUG_IMG
-        Mat debug_img;
+        Mat debug_src, debug_img;
         datas::TargetInfo debug_ti;
 #endif
         const int thread_id;//处理线程ID
@@ -264,40 +281,11 @@ namespace EM {
 
         Finder(int id) : thread_id(id) {
 #if DEBUG_IMG
-            namedWindow(to_string(id) + " img", WINDOW_NORMAL);
-            thread([this]() {
-                while (true) {
-                    if (debug_img.size().area() <= 1)continue;
-                    Mat imgShow = debug_img.clone();
-                    auto ti = debug_ti;
-                    Tools::c1to3(imgShow);
-                    putText(imgShow, "fps: " + to_string(fps), Point(0, 50),
-                            FONT_HERSHEY_COMPLEX, 1, Scalar(0, 255, 0));
-//                    putText(imgShow, "sub_fps: " + to_string(1 / ((t_1 - t_0) / getTickFrequency())) + ", " +
-//                                     to_string(1 / ((t_2 - t_1) / getTickFrequency())) + ", " +
-//                                     to_string(1 / ((t_3 - t_2) / getTickFrequency())),
-//                            Point(0, 100),
-//                            FONT_HERSHEY_COMPLEX, 1, Scalar(0, 255, 0));
-                    putText(imgShow, "active: " + to_string(ti.activeCount), Point(0, 150),
-                            FONT_HERSHEY_COMPLEX, 1,
-                            Scalar(0, ti.activeCount > 0 ? 255 : 0, ti.activeCount > 0 ? 0 : 255));
-                    Tools::drawRotatedRect(imgShow, ti.nowTarget);
-                    Tools::drawRotatedRect(imgShow, ti.nowTargetAim);
-                    m_imshow("img", imgShow);
-                    waitKey(20);
-                }
-            }).detach();
+            namedWindow("finder img " + to_string(id), WINDOW_NORMAL);
 #endif
         }
 
     private:
-#if DEBUG_IMG
-
-        inline void m_imshow(const cv::String name, InputArray mat) {
-            imshow(to_string(thread_id) + " " + name, mat);
-        }
-
-#endif
 
         /**
          * 寻找目标

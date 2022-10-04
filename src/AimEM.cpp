@@ -3,6 +3,14 @@
 //
 
 #include "AimEM.h"
+#include"ext_funcs.h"
+#include "ImgDisplay.h"
+
+#if DEBUG_AIM && (__OS__ == __OS_Linux__)
+
+#include <unistd.h>
+
+#endif
 
 namespace EM {
 
@@ -13,10 +21,22 @@ namespace EM {
 //        std::cout << id << " " << target.x << ", " << target.y << std::endl;
         size = info.size;
 #endif
+        static cv::Point2f zero(0, 0);
         go = cv::Point(size.width / 2 + offset_x, size.height / 2 + offset_y);
-        velocity = go - target;
+        velocity = info.findTarget ? go - target : zero;
 
-        return {info.findTarget ? 2 : 0, info.activeCount, velocity, info.delay};
+#if DEBUG_IMG
+        if (target.x > 0 && target.y > 0 && go.x > 0 && go.y > 0 && size.area() > 0)
+            ifr::ImgDisplay::setDisplay(WINNAME_AIM_IMG, [this]() -> cv::Mat {
+                cv::Mat mat(size, CV_8UC3, cv::Scalar(0, 0, 0));
+                cv::line(mat, target, go, cv::Scalar(100, 0, 255), 5);
+                circle(mat, target, 10, cv::Scalar(255, 55, 0), -1);  //画点，其实就是实心圆
+                circle(mat, go, 10, cv::Scalar(0, 155, 255), -1);  //画点，其实就是实心圆
+                return mat;
+            });
+#endif
+
+        return {info.findTarget ? 2 : 0, info.activeCount, velocity, info.delay, info.receiveTick};
     }
 
 
@@ -44,32 +64,11 @@ namespace EM {
         }
     }
 
+
     AimEM::AimEM() {
         readValue();
-#if DEBUG_AIM
-//        cv::namedWindow(WINNAME_AIM_VAL, cv::WINDOW_NORMAL);
+#if DEBUG_IMG
         cv::namedWindow(WINNAME_AIM_IMG, cv::WINDOW_NORMAL);
-//        cv::resizeWindow(WINNAME_AIM_VAL, 200, 200);
-        std::thread([this] {
-            while (true) {
-                if (target.x <= 0 || target.y <= 0 || go.x <= 0 || go.y <= 0 || size.area() <= 0)continue;
-                const auto size0 = size.area() > 0 ? size : cv::Size(1920, 1200);
-                cv::Mat mat(size0, CV_8UC3, cv::Scalar(0, 0, 0));
-                cv::line(mat, target, go, cv::Scalar(100, 0, 255), 5);
-                circle(mat, target, 10, cv::Scalar(255, 55, 0), -1);  //画点，其实就是实心圆
-                circle(mat, go, 10, cv::Scalar(0, 155, 255), -1);  //画点，其实就是实心圆
-                cv::imshow(WINNAME_AIM_IMG, mat);
-                cv::waitKey(1);
-            }
-        }).detach();
-//        std::thread([this] {
-////            readValue();
-//            cv::Mat mat(200, 200, CV_8UC3, cv::Scalar(0, 0, 0));
-//            cv::putText(mat, std::to_string(offset_x) + ", " + std::to_string(offset_y), cv::Point(0, 50),
-//                        cv::FONT_HERSHEY_COMPLEX, 1, cv::Scalar(0, 255, 0));
-//            cv::imshow(WINNAME_AIM_VAL, mat);
-//            cv::waitKey(500);
-//        }).detach();
 #endif
     }
 } // EM

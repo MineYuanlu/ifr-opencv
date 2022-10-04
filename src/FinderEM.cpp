@@ -12,7 +12,7 @@ namespace EM {
 
         __CV_NAMESPACE cvtColor(src, gray, COLOR_BayerRG2GRAY);//空间转换
 
-        static const auto blurSize = Size(5, 5);
+        static const auto blurSize = Size(3, 3);
 #if USE_GPU //平滑图像
         static const auto blurfilter = cv::cuda::createBoxFilter(CV_8UC1, CV_8UC1, blurSize);
         blurfilter->apply(gray, img1);
@@ -21,8 +21,8 @@ namespace EM {
 #endif
         __CV_NAMESPACE threshold(img1, img2, 160, 255, THRESH_BINARY);//二值化
 
-        static const auto dilateKernel = getStructuringElement(0, Size(7, 7));
-#if USE_GPU //平滑图像
+        static const auto dilateKernel = getStructuringElement(0, Size(9, 9));
+#if USE_GPU //膨胀图像
         static const auto dilateFilter = cuda::createMorphologyFilter(MORPH_DILATE, CV_8UC1, dilateKernel,
                                                                       Point(-1, -1), 1);
         dilateFilter->apply(img2, dist);
@@ -36,6 +36,9 @@ namespace EM {
             , map<string, double> &times
 #endif
     ) {
+#if DEBUG_IMG
+        debug_src = src;
+#endif
         auto t_start = getTickCount();
         Mat img1;
 #if USE_GPU
@@ -82,25 +85,19 @@ namespace EM {
         times["轮廓"] = (t_4 - t_3) / getTickFrequency() * 1000;
         times["寻找"] = (t_5 - t_4) / getTickFrequency() * 1000;
 #endif
-#if DEBUG_IMG
-        debug_img = img1;
-        debug_ti = ti;
-//        Mat imgShow = img1.clone();
-//        Tools::c1to3(imgShow);
-//        putText(imgShow, "fps: " + to_string(fps), Point(0, 50),
-//                FONT_HERSHEY_COMPLEX, 1, Scalar(0, 255, 0));
-//        putText(imgShow, "sub_fps: " + to_string(1 / ((t_1 - t_0) / getTickFrequency())) + ", " +
-//                         to_string(1 / ((t_2 - t_1) / getTickFrequency())) + ", " +
-//                         to_string(1 / ((t_3 - t_2) / getTickFrequency())),
-//                Point(0, 100),
-//                FONT_HERSHEY_COMPLEX, 1, Scalar(0, 255, 0));
-//        putText(imgShow, "active: " + to_string(ti.activeCount), Point(0, 150),
-//                FONT_HERSHEY_COMPLEX, 1,
-//                Scalar(0, ti.activeCount > 0 ? 255 : 0, ti.activeCount > 0 ? 0 : 255));
-//        Tools::drawRotatedRect(imgShow, ti.nowTarget);
-//        Tools::drawRotatedRect(imgShow, ti.nowTargetAim);
-//        m_imshow("img", imgShow);
-//        waitKey(20);
+#if DEBUG_IMG && 0
+        ifr::ImgDisplay::setDisplay("finder img " + to_string(thread_id), [this, img1, ti]() -> cv::Mat {
+            auto imgShow = img1.clone();
+            Tools::c1to3(imgShow);
+            putText(imgShow, "fps: " + to_string(fps), Point(0, 50),
+                    FONT_HERSHEY_COMPLEX, 1, Scalar(0, 255, 0));
+            putText(imgShow, "active: " + to_string(ti.activeCount), Point(0, 100),
+                    FONT_HERSHEY_COMPLEX, 1,
+                    Scalar(0, ti.activeCount > 0 ? 255 : 0, ti.activeCount > 0 ? 0 : 255));
+            Tools::drawRotatedRect(imgShow, ti.nowTarget);
+            Tools::drawRotatedRect(imgShow, ti.nowTargetAim);
+            return imgShow;
+        });
 #endif
         auto t_end = getTickCount();
         ti.size = img1.size();
@@ -186,7 +183,8 @@ namespace EM {
                 } else if (assets.targetMatcher.getDistance(contours, hierarchy, index, cache) < threshold) {
                     ti.findTarget = true;
                     ti.nowTarget = minAreaRect(contours[index]);
-                    ti.nowTargetAim = minAreaRect(contours[hierarchy[index][2]]);
+                    ti.nowTargetAim = assets.targetMatcher.getFirstSubRRect(contours, hierarchy, index, cache);
+//                    ti.nowTargetAim = minAreaRect(contours[hierarchy[index][2]]);
                 } else {
                     hasFound = false;
                 }
