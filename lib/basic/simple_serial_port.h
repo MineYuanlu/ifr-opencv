@@ -28,14 +28,13 @@ int reset_error(void);
 
 int get_last_error(void);
 
-int enable_serial_port(char *device_str, _Bool force_open);
+int enable_serial_port(char* device_str, _Bool force_open);
 
 int disable_serial_port(void);
 
-int get_serial_port_attributes(speed_t *baud_rate, uint8_t *data_bits, uint8_t *parity, uint8_t *stop_bits);
+int get_serial_port_attributes(speed_t* baud_rate, uint8_t* data_bits, uint8_t* parity, uint8_t* stop_bits);
 
-int
-set_serial_port_attributes(speed_t baud_rate, uint8_t data_bits, uint8_t parity, uint8_t stop_bits, _Bool force_set);
+int set_serial_port_attributes(speed_t baud_rate, uint8_t data_bits, uint8_t parity, uint8_t stop_bits, _Bool force_set);
 
 int set_serial_port_block_reading(void);
 
@@ -43,9 +42,9 @@ int set_serial_port_nonblock_reading(void);
 
 int set_serial_port_to_default(_Bool force_set);
 
-int __receive(uint8_t *dst, size_t size);
+int __receive(uint8_t* dst, size_t size);
 
-int __transmit(uint8_t *dst, size_t size);
+int __transmit(uint8_t* dst, size_t size);
 
 //__EXPORT_C_END
 

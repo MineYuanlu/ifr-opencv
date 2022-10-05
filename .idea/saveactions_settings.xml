@@ -11,5 +11,10 @@
         <option value="rearrange" />
       </set>
     </option>
+    <option name="inclusions">
+      <set>
+        <option value="src/.*" />
+      </set>
+    </option>
   </component>
 </project>
