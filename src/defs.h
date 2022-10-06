@@ -23,7 +23,7 @@
 
 #define USE_GPU 0 //是否使用GPU加速计算
 
-#define USE_FORECAST 0 //是否使用预测, 如果不使用预测, 则直接输出
+#define USE_FORECAST 1 //是否使用预测, 如果不使用预测, 则直接输出
 
 #define DATA_IN 0 //输入方式 (相机/视频)
 #define DATA_IN_CAMERA (DATA_IN==0)
@@ -64,14 +64,12 @@ namespace datas {
         cv::RotatedRect nowTargetAim;//目标装甲板位置
         cv::Size size;//画面大小
         uint64_t time; //帧时间戳(来自相机)
-        int64 delay;//处理时长
         int64 receiveTick;// 接收到图像时的tick
     };
     struct OutInfo {
         int targetType;//目标类型 0 :未找到 1:找到但不确定 2: 确定
         int activeCount;//激活数量
         cv::Point2f velocity;//移动矢量
-        int64 delay;//处理延时
         int64 receiveTick;// 接收到图像时的tick
     };
 }

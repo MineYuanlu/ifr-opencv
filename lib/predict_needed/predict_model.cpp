@@ -7,6 +7,9 @@
 #include <thread>
 #include <mutex>
 
+FParam UB_VAL = {2, 4, CV_PI, 4};           //拟合参数上界
+FParam LB_VAL = {-2, -4, -CV_PI, -4};        //拟合参数下界
+
 /**
 * @brief 计算变化的角度
 * @param now_angle 当前角度
@@ -192,12 +195,6 @@ void fit_thread_CallBack(void *_params_stru) {
 
 thread *fit_thread_p;                   //函数拟合计算线程指针
 
-#ifndef LU_VAL
-#define LU_VAL
-FParam UB_VAL = {4, CV_PI, CV_PI, 4};           //拟合参数上界
-FParam LB_VAL = {-4, 0, -CV_PI, -4};        //拟合参数下界
-#endif
-
 /**
 * @brief PredictModelFit类构造函数
 */
@@ -208,7 +205,7 @@ PredictModelFit::PredictModelFit() {
     this->now_param = FParam();
     this->step = FParam();
 
-    this->max_sec = 4.0l;
+    this->max_sec = 3.5l;
     this->now_start_time = 0.0l;
     this->data_collected = false;
     this->model_available = false;
@@ -216,9 +213,9 @@ PredictModelFit::PredictModelFit() {
     this->ub = FParam(UB_VAL);
     this->lb = FParam(LB_VAL);
 
-    this->now_param.resize(4, 0.1);
+    this->now_param.resize(4, 1.0l);
     this->tp_data_set.clear();
-    this->step.resize(4, 0.5);
+    this->step.resize(4, 0.1l);
 }
 
 fitfuc_thread_params fit_needed_param;          //函数拟合计算线程所需参数保存在此变量
@@ -234,15 +231,14 @@ FParam temp_func_param;
 */
 void PredictModelFit::get_data(Point2f &center, Point2f &target, Point2f &leap_center, double time) {
     if (!this->data_collected)
-        this->data_collected = !get_position_data_to_Set(target, leap_center, this->tp_data_set, (long double) time,
-                                                         this->max_sec);
+        this->data_collected = !(get_position_data_to_Set(target, leap_center, this->tp_data_set, (long double) (time),
+                                                          this->max_sec));
     //cout << "time: " << time << endl;
-    this->now_start_time = this->tp_data_set.begin()->x;
+    //this->now_start_time = this->tp_data_set.begin()->x;
     this->now_center = center;
     this->now_target = target;
     this->now_time = (long double) time;
     this->now_angle = get_angle(target, leap_center);
-    //cout << "this->tp_data_set.size(): " << this->tp_data_set.size() << endl;
     Point2f vec_C2T = target - center;
     this->now_path_radius = (double) std::sqrt(vec_C2T.x * vec_C2T.x + vec_C2T.y * vec_C2T.y);
 
@@ -255,9 +251,11 @@ void PredictModelFit::get_data(Point2f &center, Point2f &target, Point2f &leap_c
         delete [] fit_thread_p;
         cout << "4\n";*/
 
-        //this->show_data_and_params();
         this->now_param = temp_func_param;
         this->step = FParam({0.1, 0.1, 0.1, 0.1});
+
+        //this->show_data_and_params();
+        //exit(0);
 
         printf("Func Calculated\n");
         this->data_collected = false;
@@ -267,7 +265,10 @@ void PredictModelFit::get_data(Point2f &center, Point2f &target, Point2f &leap_c
         this->ti_data.clear();
     }
     if (this->data_collected && !now_calculating_func) {
+        this->now_start_time = this->tp_data_set.begin()->x;
+
         convert_DataSet_to_tp_Data(this->tp_data_set, this->tp_data);
+
         calc_intg_data(this->tp_data, this->ti_data, &this->now_start_time);
 
         fit_needed_param.func_p = (void *) Int_velocity_func_t0_is0;
@@ -281,6 +282,7 @@ void PredictModelFit::get_data(Point2f &center, Point2f &target, Point2f &leap_c
         //cout << "1\n";
         now_calculating_func = true;
         fit_thread_p = new thread(fit_thread_CallBack, (void *) (&fit_needed_param));
+        while (!fit_thread_p->joinable());
         //cout << "2\n";
     }
     fit_thread_lock.unlock();
@@ -332,17 +334,105 @@ void PredictModelFit::show_data_and_params() {
 }
 
 /**
-* @brief PredictModelFit速预测方法
+* @brief PredictModelFit速度预测方法
 * @param time 计算目标time单位时间后的线速度，所用单位与获取的数据的单位相同
 */
 Point2f PredictModelFit::predict_vel(double time) {
     double predict_angular_vel;
     Point2f r_vec = this->now_target - this->now_center, predict_linear_vel_vec;
 
-    predict_angular_vel = velocity_func(this->now_param, this->now_start_time + time);
+    predict_angular_vel = velocity_func(this->now_param, this->now_time - this->now_start_time + time);
 
     predict_linear_vel_vec.x = -1.0 * predict_angular_vel * r_vec.y;
     predict_linear_vel_vec.y = predict_angular_vel * r_vec.x;
 
     return predict_linear_vel_vec;
+}
+
+PredictModelDynFit::PredictModelDynFit() {
+    this->now_param = FParam(4, 0.1l);
+    this->lb = LB_VAL;
+    this->ub = UB_VAL;
+    this->fitter = DynFitter(this->now_param, this->lb, this->ub, Int_velocity_func_t0_is0, 6.0l, 0.9l);
+
+    this->fitter.OpenProcess();
+}
+
+PredictModelDynFit::PredictModelDynFit(long double learning_rate, FParam start_param, FParam lb, FParam ub,
+                                       long double max_sec) {
+    this->now_param = FParam(start_param);
+    this->lb = FParam(lb);
+    this->ub = FParam(ub);
+    this->fitter = DynFitter(this->now_param, this->lb, this->ub, Int_velocity_func_t0_is0, max_sec, learning_rate);
+
+    this->fitter.OpenProcess();
+}
+
+PredictModelDynFit::~PredictModelDynFit() {
+    this->fitter.CloseProcess();
+    delete this;
+}
+
+void PredictModelDynFit::get_data(const Point2f &center, const Point2f &target, const Point2f &leap_center,
+                                  const double time) {
+    this->now_center = center;
+    this->now_target = target;
+    this->now_time = (long double) time;
+    this->now_angle = get_angle(target, leap_center);
+    Point2f vec_C2T = target - center;
+    this->now_path_radius = (double) std::sqrt(vec_C2T.x * vec_C2T.x + vec_C2T.y * vec_C2T.y);
+
+    Data TempData;
+    TempData.x = this->now_time;
+    TempData.y = this->now_angle;
+    this->fitter.insertData(TempData);
+
+    return;
+}
+
+double PredictModelDynFit::predict(double time) {
+    this->fitter.get_now_param(this->now_param, this->start_time);
+    this->predict_angle = this->now_angle + Int_velocity_func(this->now_param, this->now_time - this->start_time, time);
+    return (double) this->predict_angle;
+}
+
+/**
+* @brief PredictModelDynFit获取预测目标像素位置方法，在调用predict()方法后更新
+*/
+Point2f PredictModelDynFit::get_predict_position() {
+    Point2f predict_pt;
+    predict_pt.x = this->now_center.x + this->now_path_radius * std::cos(this->predict_angle);
+    predict_pt.y = this->now_center.y + this->now_path_radius * std::sin(this->predict_angle);
+
+    return predict_pt;
+}
+
+/**
+    * @brief PredictModelDynFit速度预测方法
+    * @param time 计算目标time单位时间后的线速度，所用单位与获取的数据的单位相同
+    */
+Point2f PredictModelDynFit::predict_vel(double time) {
+    double predict_angular_vel;
+    Point2f predict_target = this->get_predict_position();
+    Point2f r_vec = predict_target - this->now_center, predict_linear_vel_vec;
+
+    predict_angular_vel = velocity_func(this->now_param, this->now_time - this->start_time + time);
+
+    predict_linear_vel_vec.x = -1.0 * predict_angular_vel * r_vec.y;
+    predict_linear_vel_vec.y = predict_angular_vel * r_vec.x;
+
+    return predict_linear_vel_vec;
+}
+
+/**
+* @brief PredictModelDynFit类打印当前模型内数据和函数参数的方法
+*/
+void PredictModelDynFit::show_data_and_params() {
+    int i;
+
+    cout << "func_params=[" << this->now_param[0];
+    for (i = 1; i < this->now_param.size(); i++) {
+        cout << "," << this->now_param[i];
+    }
+    cout << "];\n";
 }

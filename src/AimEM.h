@@ -20,8 +20,7 @@
 namespace EM {
 
 
-    class AimEM {
-    public:
+    namespace AimEM {
         /**
          * 处理识别结果
          * @param id 帧ID
@@ -32,7 +31,7 @@ namespace EM {
         /**
          * 初始化瞄准器
          */
-        AimEM();
+        void init();
 
         /**
          * 保存参数
@@ -44,15 +43,7 @@ namespace EM {
          */
         void readValue();
 
-    public:
-        cv::Point2f target;//目标位置
-        cv::Size size;//画幅大小
-        cv::Point2f go;//瞄准位置
-        cv::Point2f velocity;//移动矢量
-        int offset_x, offset_y;//瞄准偏移
     };
-
-    static AimEM aimEm;//单例
 
 } // EM
 

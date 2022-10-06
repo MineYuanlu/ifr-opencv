@@ -34,14 +34,14 @@ bool merge_data_to_xy_data(FParam &x, FParam &y, FParam &xy_data) {
 }
 
 /**
-* @brief 计算角度制角度
+* @brief 计算弧度制角度
 * @param target 目标位置
 * @param center 目标的环绕中心位置
 * @return 计算的角度
 */
-long double get_angle(Point2f &target, Point2f &center) {
+long double get_angle(const Point2f &target, const Point2f &center) {
 
-    return std::atan2(target.y - center.y, target.x - center.x);
+    return (long double) (std::atan2(target.y - center.y, target.x - center.x));
 
 }
 
@@ -156,8 +156,8 @@ bool get_position_data_to_Set(Point2f &target, Point2f &center, DataSetType &tp_
 void convert_DataSet_to_tp_Data(DataSetType &tp_data_set, FParam &tp_data) {
     tp_data.clear();
     for (; tp_data_set.size() > 0;) {
-        tp_data.push_back(tp_data_set.begin()->x);
-        tp_data.push_back(tp_data_set.begin()->y);
+        tp_data.push_back((const long double) (tp_data_set.begin()->x));
+        tp_data.push_back((const long double) (tp_data_set.begin()->y));
         tp_data_set.erase(tp_data_set.begin());
     }
 }
@@ -268,39 +268,36 @@ void intg_data_filt(FParam &src_ti_data, FParam &dst_ti_data) {
 * @param start_time 保存tp_data中的第一个时间数据的值
 */
 void calc_intg_data(FParam &tp_data, FParam &ti_data, long double *start_time) {
-    static long double cur_T, cur_In, change_P, pre_change_P = 0, pre_vel, change_T;
-    static int i, N;
+    volatile long double cur_T = 0, cur_In = 0, change_P = 0, pre_change_P = 0, pre_vel = 0, change_T = 1;
+    size_t i, N;
 
     N = tp_data.size();
     ti_data.clear();
     ti_data.push_back(0.0);
     ti_data.push_back(0.0);
     *start_time = tp_data[0];
-    cur_In = 0.0;
-    cur_T = 0;
-    change_P = 0;
-    pre_change_P = 0;
-    pre_vel = 0;
-    change_T = 1;
 
     for (i = 2; i < N; i += 2) {
-        pre_vel = 0.9 * change_P / change_T + 0.1 * pre_vel;
+
+        pre_vel = 0.85 * change_P / change_T + 0.15 * pre_vel;
         change_T = tp_data[i] - tp_data[i - 2];
 
-        pre_change_P = 0.9 * pre_vel * change_T + 0.1 * change_P;
+        pre_change_P = pre_vel * change_T;
+
+        //cout << "pre_change_P:" << pre_change_P << endl;
 
         cur_T += change_T;
 
         change_P = tp_data[i + 1] - tp_data[i - 1];
         if (change_P > CV_PI)change_P -= CV_PI * 2.0;
         else if (change_P < -CV_PI)change_P += CV_PI * 2.0;
-        if (std::abs(change_P) > CV_PI / 5.0 || change_P * pre_change_P < 0) {
+        if (std::abs(change_P) > 0.2 || change_P * pre_change_P < 0) {
             change_P = pre_change_P;
         }
         cur_In += change_P;
 
-        ti_data.push_back(cur_T);
-        ti_data.push_back(cur_In);
+        ti_data.push_back((long double) cur_T);
+        ti_data.push_back((long double) cur_In);
     }
 
     //intg_data_filt(ti_data, ti_data);

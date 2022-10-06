@@ -32,6 +32,8 @@ int main() {
     return -1;
 }
 
+ifr::DataWaiter<uint64_t, datas::TargetInfo> dw;
+
 void start() {
     OUTPUT("开始启动")
     ifr::Signal::open_dog_thread(4.0);
@@ -44,13 +46,13 @@ void start() {
 #if DATA_IN_VIDEO
     //TODO
 #endif
-    ifr::DataWaiter<uint64_t, datas::TargetInfo> dw;
 
-    thread MainProgressThread = thread([&dw]() {//识别 - 预测 - 发送
+    thread MainProgressThread = thread([]() {//识别 - 预测 - 发送
         umt::Publisher<datas::OutInfo> goOut(MSG_OUTPUT);//发布者
+        EM::AimEM::init();
         while (true) {
             const auto data = dw.pop();
-            const auto out = EM::aimEm.handle(data.first, data.second);
+            const auto out = EM::AimEM::handle(data.first, data.second);
             goOut.push(out);
         }
     });
@@ -72,7 +74,7 @@ void start() {
 
     for (int i = 1; i <= THREAD_IDENTITY; i++) {
         cout << "启动识别线程 " << i << endl;
-        VisionThreads[i - 1] = thread([&dw, i]() {
+        VisionThreads[i - 1] = thread([i]() {
             umt::Subscriber<datas::FrameData> fdIn(MSG_CAMERA);
             EM::Finder finder(i);
 #if DEBUG_TIME

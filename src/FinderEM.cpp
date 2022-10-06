@@ -39,7 +39,6 @@ namespace EM {
 #if DEBUG_IMG
         debug_src = src;
 #endif
-        auto t_start = getTickCount();
         Mat img1;
 #if USE_GPU
         cuda::GpuMat gpuMat;
@@ -74,8 +73,14 @@ namespace EM {
                 , contours, hierarchy);
         DEBUG_nowTime(t_5)
 
+        if (ti.findTarget) {
+            auto x = ti.nowTarget.center - ti.nowTargetAim.center;
+        }
+
+        DEBUG_nowTime(t_6)
+
 #if DEBUG_TIME || DEBUG_IMG
-        fps = 1 / ((t_5 - t_0) / getTickFrequency());
+        fps = 1 / ((t_6 - t_0) / getTickFrequency());
 #endif
 #if DEBUG_TIME
         times["总时间"] = (t_end - t_0) / getTickFrequency() * 1000;
@@ -84,6 +89,7 @@ namespace EM {
         times["下载"] = (t_3 - t_2) / getTickFrequency() * 1000;
         times["轮廓"] = (t_4 - t_3) / getTickFrequency() * 1000;
         times["寻找"] = (t_5 - t_4) / getTickFrequency() * 1000;
+        times["圆心"] = (t_6 - t_5) / getTickFrequency() * 1000;
 #endif
 #if DEBUG_IMG && 0
         ifr::ImgDisplay::setDisplay("finder img " + to_string(thread_id), [this, img1, ti]() -> cv::Mat {
@@ -99,9 +105,7 @@ namespace EM {
             return imgShow;
         });
 #endif
-        auto t_end = getTickCount();
         ti.size = img1.size();
-        ti.delay = (t_end - t_start) / getTickFrequency() * 1000;
         return ti;
     }
 

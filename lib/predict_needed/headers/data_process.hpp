@@ -5,8 +5,6 @@
 #ifndef DATA_PROCESS_INCLUDED
 #define DATA_PROCESS_INCLUDED
 
-#include "fit_functions.hpp"
-
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc/types_c.h>
 #include <ctime>
@@ -19,18 +17,28 @@ using namespace cv;
 struct Data {
     long double x;
     long double y;
+
+    bool operator==(const Data &b) const {
+        return this->x == b.x && this->y == b.y;
+    }
 };
 
 //Data类型的比较函数定义
 class DataComp {
 public:
-    bool operator()(const Data &a, const Data &b) {
+    bool operator()(const Data &a, const Data &b) const {
         return a.x < b.x;
-    }
+    };
 };
 
 //保存Data类型数据的Set类型
 typedef set<Data, DataComp> DataSetType;
+
+typedef vector<long double> FParam;
+
+typedef double (*oriFuncType)(FParam &, double);
+
+typedef long double (*lossFuncType)(void *, FParam &, DataSetType &);
 
 /**
 * @brief 将x和y数据合为一个数据
@@ -47,7 +55,7 @@ bool merge_data_to_xy_data(FParam &x, FParam &y, FParam &xy_data);
 * @param center 目标的环绕中心位置
 * @return 计算的角度
 */
-long double get_angle(Point2f &target, Point2f &center);
+long double get_angle(const Point2f &target, const Point2f &center);
 
 /**
 * @brief 获取位置数据，保存为[时间，角度，时间，角度……]，时间单位为秒
