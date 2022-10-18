@@ -11,7 +11,15 @@
 #include <queue>
 #include <map>
 
+using namespace std;
 namespace ifr {
+    /**
+     * @brief 消息异常类型，消息读取超时
+     */
+    class Timeout : public std::runtime_error {
+    public:
+        Timeout() : std::runtime_error::runtime_error("message read timeout!") {}
+    };
 
 /**
  * 等待数据, 多线程下数据处理先后不一致, 通过此类将数据排序
@@ -49,6 +57,24 @@ namespace ifr {
         std::pair<const ID, Data> pop() {
             std::unique_lock<std::mutex> lock(mtx);
             cv.wait(lock, [this]() { return canPop(); });
+            const auto id = que.top();
+            const auto fst = datas.find(id);
+            que.pop();
+            std::pair<const ID, Data> e(id, fst->second);
+            datas.erase(fst);
+            return e;
+        }
+
+        /**
+         * 获取数据，有超时时间
+         * @param ms 超时时间，单位毫秒
+         * @return 获取到的数据
+         */
+        std::pair<const ID, Data> pop_for(size_t ms) {
+            std::unique_lock<std::mutex> lock(mtx);
+            if (!cv.wait_for(lock, std::chrono::milliseconds(ms), [this]() { return canPop(); })) {
+                throw Timeout();
+            }
             const auto id = que.top();
             const auto fst = datas.find(id);
             que.pop();

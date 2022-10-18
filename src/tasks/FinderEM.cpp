@@ -3,6 +3,8 @@
 //
 
 #include "FinderEM.h"
+#include "web/mongoose.h"
+#include "../API.h"
 
 namespace EM {
 
@@ -21,7 +23,7 @@ namespace EM {
 #endif
         __CV_NAMESPACE threshold(img1, img2, 160, 255, THRESH_BINARY);//二值化
 
-        static const auto dilateKernel = getStructuringElement(0, Size(9, 9));
+        static const auto dilateKernel = getStructuringElement(0, Size(5, 5));
 #if USE_GPU //膨胀图像
         static const auto dilateFilter = cuda::createMorphologyFilter(MORPH_DILATE, CV_8UC1, dilateKernel,
                                                                       Point(-1, -1), 1);
@@ -36,27 +38,20 @@ namespace EM {
             , map<string, double> &times
 #endif
     ) {
-#if DEBUG_IMG
-        debug_src = src;
-#endif
-        Mat img1;
-#if USE_GPU
-        cuda::GpuMat gpuMat;
-#endif
         DEBUG_nowTime(t_0)
-#if USE_GPU
-        gpuMat.upload(src);
-#endif
+
+        Mat img1;
+        USE_GPU_SELECT(cuda::GpuMat gpuMat,);
+        USE_GPU_SELECT(gpuMat.upload(src),);
+
         DEBUG_nowTime(t_1)
-#if USE_GPU
-        Tools::prepare(gpuMat, gpuMat);
-#else
-        Tools::prepare(src, img1);
-#endif
+
+        Tools::prepare(USE_GPU_SELECT(gpuMat, src), USE_GPU_SELECT(gpuMat, img1));
+
         DEBUG_nowTime(t_2)
-#if USE_GPU
-        gpuMat.download(img1);
-#endif
+
+        USE_GPU_SELECT(gpuMat.download(img1),);
+
         DEBUG_nowTime(t_3)
         vector<vector<Point>> contours;  //所有轮廓
         vector<Vec4i> hierarchy;         //轮廓关系
@@ -64,15 +59,10 @@ namespace EM {
         findContours(img1, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);  //寻找轮廓
 
         DEBUG_nowTime(t_4)
-        auto ti = findTargets(     //寻找目标
-#if USE_GPU
-                gpuMat
-#else
-                img1
-#endif
-                , contours, hierarchy);
-        DEBUG_nowTime(t_5)
 
+        auto ti = findTargets(USE_GPU_SELECT(gpuMat, img1), contours, hierarchy); //寻找目标
+
+        DEBUG_nowTime(t_5);
         if (ti.findTarget) {
             auto x = ti.nowTarget.center - ti.nowTargetAim.center;
         }
@@ -91,7 +81,10 @@ namespace EM {
         times["寻找"] = (t_5 - t_4) / getTickFrequency() * 1000;
         times["圆心"] = (t_6 - t_5) / getTickFrequency() * 1000;
 #endif
-#if DEBUG_IMG && 0
+#if DEBUG_IMG
+        ifr::ImgDisplay::setDisplay("finder src " + to_string(thread_id), [src]() -> cv::Mat {
+            return src;
+        });
         ifr::ImgDisplay::setDisplay("finder img " + to_string(thread_id), [this, img1, ti]() -> cv::Mat {
             auto imgShow = img1.clone();
             Tools::c1to3(imgShow);
@@ -100,6 +93,15 @@ namespace EM {
             putText(imgShow, "active: " + to_string(ti.activeCount), Point(0, 100),
                     FONT_HERSHEY_COMPLEX, 1,
                     Scalar(0, ti.activeCount > 0 ? 255 : 0, ti.activeCount > 0 ? 0 : 255));
+            if (ti.findTarget) {
+                auto size = ti.nowTarget.size;
+                putText(imgShow,
+                        to_string((unsigned long) size.area()) + " " +
+                        to_string(max(size.width / size.height, size.height / size.width)),
+                        ti.nowTarget.center,
+                        FONT_HERSHEY_COMPLEX, 0.8,
+                        Scalar(255, 255, 100));
+            }
             Tools::drawRotatedRect(imgShow, ti.nowTarget);
             Tools::drawRotatedRect(imgShow, ti.nowTargetAim);
             return imgShow;
@@ -110,6 +112,7 @@ namespace EM {
     }
 
 #if USE_GPU
+
     void Tools::c1to3(cv::cuda::GpuMat &mat) {
         if (mat.channels() == 3) return;
         if (mat.channels() != 1) throw invalid_argument("通道数不等于1或3");
@@ -117,6 +120,7 @@ namespace EM {
         vector<cv::cuda::GpuMat> channels(3, mat);
         cv::cuda::merge(channels, mat);
     }
+
 #endif
 
     void Tools::c1to3(cv::Mat &mat) {
@@ -178,23 +182,72 @@ namespace EM {
                 que.push((int) i);
                 break;
             }
-        vector<RotatedRect> cache(contours.size());
+        vector<RotatedRect> cache(contours.size());//rr矩形缓存
+        vector<int> othersIndex;//其它轮廓的index (即除2种扇叶及其子集外的轮廓)
+        othersIndex.reserve(contours.size());
         while (!que.empty()) {
-            for (auto index = que.front(); index != -1; index = hierarchy[index][0]) {
+            for (auto index = que.front(); index != -1; index = hierarchy[index][0]) {//逐层遍历
                 bool hasFound = true;  //是否找到一个目标 (找到目标后将不再遍历子范围)
-                if (assets.activeMatcher.getDistance(contours, hierarchy, index, cache) < threshold) {
+                if (assets->activeMatcher.getDistance(contours, hierarchy, index, cache) < threshold) {
                     ti.activeCount++;
-                } else if (assets.targetMatcher.getDistance(contours, hierarchy, index, cache) < threshold) {
+                    const auto &rr = Tools::getRrect(contours, cache, index);
+                } else if (assets->targetMatcher.getDistance(contours, hierarchy, index, cache) < threshold) {
                     ti.findTarget = true;
                     ti.nowTarget = minAreaRect(contours[index]);
-                    ti.nowTargetAim = assets.targetMatcher.getFirstSubRRect(contours, hierarchy, index, cache);
+                    ti.nowTargetAim = assets->targetMatcher.getFirstSubRRect(contours, hierarchy, index, cache);
 //                    ti.nowTargetAim = minAreaRect(contours[hierarchy[index][2]]);
+                    const auto &rr = Tools::getRrect(contours, cache, index);
                 } else {
                     hasFound = false;
+                    othersIndex.push_back(index);
                 }
                 if (!hasFound && hierarchy[index][2] != -1) que.push(hierarchy[index][2]);
             }
             que.pop();
+        }
+
+        //在找到目标装甲臂的情况下, 找到 中心R标
+        if (ti.findTarget) {
+            // 目标点到直线的距离 http://t.zoukankan.com/ggYYa-p-6038939.html
+            const auto pt1 = ti.nowTargetAim.center, pt2 = ti.nowTarget.center;
+            const auto A = pt2.y - pt1.y, B = pt1.x - pt2.x, C = pt2.x * pt1.y - pt1.x * pt2.y;
+            const auto sA2B2 = sqrt(A * A + B * B);
+
+            //目标点是否在风车臂的另一侧, 并计算距离
+            const auto pt1_ = 2 * pt2 - pt1;
+            const auto vec11 = pt1_ - pt1;
+            const auto s11 = sqrt(vec11.dot(vec11));
+
+            const auto aimLength = 1.5F * max(ti.nowTargetAim.size.width, ti.nowTargetAim.size.height);// 装甲板最长边1.5倍
+            const auto tarSize = ti.nowTarget.size.area() / 100;// 风车臂面积的百分之一
+            struct IndexAndWeight {
+                float w;
+                int index;
+            };
+            vector<IndexAndWeight> iaw;
+            for (const auto &index: othersIndex) {
+                const auto &rr = Tools::getRrect(contours, cache, index);
+                if (rr.size.width > aimLength || rr.size.height > aimLength)continue;//过滤掉面积过大的物体
+                if (rr.size.area() < tarSize)continue;//过滤掉面积过小的物体
+
+                const auto vec13 = rr.center - pt1;
+                auto α = vec11.dot(vec13);
+
+                if (α < 0)continue;//位于 风车臂近底部 以上 (即过 装甲板中心点关于风车臂中心点的对称点 做垂直于风车臂中心线的垂线 以上的部分)
+
+
+                auto disPt = α / s11;//线上的投影点 到 装甲板关于风车臂中心点的对称点 的距离
+                const auto disLine = abs(A * rr.center.x + B * rr.center.y + C) / sA2B2; //点到直线的距离
+
+                static const float weightPt = 3;//Pt 距离 的权重
+                static const float weightLine = 1;//Line 距离 的权重
+
+                iaw.push_back({disPt * weightPt + disLine * weightLine, index});
+            }
+            //
+            const auto index = std::min_element(iaw.begin(), iaw.end(),
+                                                [](const auto &a, const auto &b) { return a.w < b.w; })->index;
+            ti.emCenter = Tools::getRrect(contours, cache, index).center;
         }
         return ti;
     }

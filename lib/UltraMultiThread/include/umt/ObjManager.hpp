@@ -5,7 +5,6 @@
 #include <memory>
 #include <set>
 #include <unordered_map>
-
 namespace umt {
 
     namespace utils {
@@ -19,7 +18,6 @@ namespace umt {
             explicit ExportPublicConstructor(Ts &&...args) : T(std::forward<Ts>(args)...) {}
         };
     }
-
     /**
      * @brief 命名共享对象管理器
      * @details 通过对象类型和对象名称唯一确定一个共享对象（即std::shared_ptr）
@@ -34,6 +32,15 @@ namespace umt {
         using sptr = std::shared_ptr<T>;
         using wptr = std::weak_ptr<T>;
 
+    private:
+        /// 当前对象名称
+        std::string _name;
+
+        /// 全局map互斥锁
+        static std::mutex _mtx;
+        /// 对象map，用于查找命名对象
+        static std::unordered_map<std::string, wptr> _map;
+    public:
         /**
          * @brief 创建一个命名共享对象
          * @tparam Ts 对象的构造函数参数类型
@@ -110,23 +117,22 @@ namespace umt {
         template<class ...Ts>
         explicit ObjManager(std::string name, Ts &&...args) : T(std::forward<Ts>(args)...), _name(std::move(name)) {}
 
-    private:
-        /// 当前对象名称
-        std::string _name;
-
-        /// 全局map互斥锁
-        static std::mutex _mtx;
-        /// 对象map，用于查找命名对象
-        static std::unordered_map<std::string, wptr> _map;
     };
 
     template<class T>
-    __attribute__((visibility("default")))
-    /*TODO C++17: inline*/ std::mutex ObjManager<T>::_mtx;
+#if defined(__linux__)
+//    __attribute__((visibility("default")))
+    /*TODO C++17: inline*/
+#endif
+    std::mutex ObjManager<T>::_mtx;
 
     template<class T>
-    __attribute__((visibility("default")))
-    /*TODO C++17: inline*/ std::unordered_map<std::string, typename ObjManager<T>::wptr> ObjManager<T>::_map;
+#if defined(__linux__)
+//    __attribute__((visibility("default")))
+    /*TODO C++17: inline*/
+#endif
+    std::unordered_map<std::string, typename ObjManager<T>::wptr> ObjManager<T>::_map;
+
 
 }
 

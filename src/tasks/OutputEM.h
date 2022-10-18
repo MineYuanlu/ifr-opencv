@@ -5,9 +5,10 @@
 #ifndef IFR_OPENCV_OUTPUTEM_H
 #define IFR_OPENCV_OUTPUTEM_H
 
-#include "defs.h"
+#include "../defs.h"
 #include "serial_port.h"
 #include "ext_types.h"
+#include "../Plans.h"
 
 
 namespace EM {
@@ -21,8 +22,14 @@ namespace EM {
 
         void open();
 
-        void output(const datas::OutInfo &info);
-    };
+        void close();
+
+        void outputSerialPort(const datas::OutInfo &info);
+
+        void outputConsole(const datas::OutInfo &info);
+
+        void registerTask();
+    }
 
 } // ifr
 

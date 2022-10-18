@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="Encoding">
+  <component name="Encoding" defaultCharsetForPropertiesFiles="UTF-8">
     <file url="file://$PROJECT_DIR$/lib/basic/GxIAPI.h" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/lib/predict_needed/data_process.cpp" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/lib/predict_needed/headers/data_process.hpp" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/lib/predict_needed/headers/fit_functions.hpp" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/lib/predict_needed/headers/predict_model.hpp" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/lib/predict_needed/predict_model.cpp" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/src/AimEM.cpp" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/src/AimEM.h" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/src/FinderEM.cpp" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/src/FinderEM.h" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/Signal.cpp" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/Signal.h" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/tasks/AimEM.cpp" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/tasks/AimEM.h" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/tasks/FinderEM.cpp" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/tasks/FinderEM.h" charset="UTF-8" />
+    <file url="PROJECT" charset="UTF-8" />
   </component>
 </project>

@@ -314,7 +314,7 @@ Point2f PredictModelFit::get_predict_position() {
 * @brief PredictModelFit类打印当前模型内数据和函数参数的方法
 */
 void PredictModelFit::show_data_and_params() {
-    int i;
+    size_t i;
 
     cout << "T=[" << this->ti_data[0];
     for (i = 2; i < this->ti_data.size(); i += 2) {
@@ -428,7 +428,7 @@ Point2f PredictModelDynFit::predict_vel(double time) {
 * @brief PredictModelDynFit类打印当前模型内数据和函数参数的方法
 */
 void PredictModelDynFit::show_data_and_params() {
-    int i;
+    size_t i;
 
     cout << "func_params=[" << this->now_param[0];
     for (i = 1; i < this->now_param.size(); i++) {

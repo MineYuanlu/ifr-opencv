@@ -38,15 +38,15 @@ namespace ifr {
         }
 
         void startRecord(const std::string &dir) {
-            const auto file = getFile(dir);
-            writer = cv::VideoWriter(file, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 20.0,
-                                     cv::Size(Camera::getWidth(), Camera::getHeight()));
-            if (!writer.isOpened()) {
-                std::cerr << "Can't open [record] file: " << file << std::endl;
-                return;
-            }
-            t = std::thread(recorder);
-            t.detach();
+//            const auto file = getFile(dir);
+//            writer = cv::VideoWriter(file, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 20.0,
+//                                     cv::Size(Camera::getWidth(), Camera::getHeight()));
+//            if (!writer.isOpened()) {
+//                std::cerr << "Can't open [record] file: " << file << std::endl;
+//                return;
+//            }
+//            t = std::thread(recorder);
+//            t.detach();
         }
 
         void stopRecord() {

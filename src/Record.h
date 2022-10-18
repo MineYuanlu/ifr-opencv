@@ -5,7 +5,7 @@
 #ifndef IFR_OPENCV_RECORD_H
 #define IFR_OPENCV_RECORD_H
 
-#include "Camera.h"
+#include "tasks/Camera.h"
 
 namespace ifr {
 

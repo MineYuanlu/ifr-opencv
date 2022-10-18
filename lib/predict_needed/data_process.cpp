@@ -15,7 +15,7 @@ using namespace cv;
 * @return 合并是否成功
 */
 bool merge_data_to_xy_data(FParam &x, FParam &y, FParam &xy_data) {
-    static int i;
+    static size_t i;
     static size_t N;
 
     N = x.size();
@@ -51,7 +51,7 @@ long double get_angle(const Point2f &target, const Point2f &center) {
 * @param dst_tp_data 输出的滤波后的位置数据
 */
 void position_data_filt(FParam &src_tp_data, FParam &dst_tp_data) {
-    static int i;
+    static size_t i;
     static size_t N;
     static long double temp;
     FParam src_copy(src_tp_data);
@@ -64,14 +64,12 @@ void position_data_filt(FParam &src_tp_data, FParam &dst_tp_data) {
     dst_tp_data.push_back(src_copy[0]);
     dst_tp_data.push_back(src_copy[1]);
     for (i = 2; i < N; i += 2) {
-        temp = std::abs(src_copy[(size_t) i + 1] - src_copy[(size_t) i - 1]);
+        temp = std::abs(src_copy[i + 1] - src_copy[i - 1]);
         if (temp > 1e-4 && temp < CV_PI / 5.0) {
-            dst_tp_data.push_back(src_copy[(size_t) i]);
-            dst_tp_data.push_back(src_copy[(size_t) i + 1]);
+            dst_tp_data.push_back(src_copy[i]);
+            dst_tp_data.push_back(src_copy[i + 1]);
         }
     }
-
-    return;
 }
 
 #define MAX_TIMEOUT 1.0 //秒
@@ -168,7 +166,7 @@ void convert_DataSet_to_tp_Data(DataSetType &tp_data_set, FParam &tp_data) {
 * @param dst_tv_data 输出速度数据
 */
 void velocity_data_filt(FParam &src_tv_data, FParam &dst_tv_data) {
-    static int i;
+    static size_t i;
     static size_t N;
     static long double pre_change, temp, change_time;
     FParam src_copy(src_tv_data);
@@ -180,14 +178,14 @@ void velocity_data_filt(FParam &src_tv_data, FParam &dst_tv_data) {
     //pre_change = 0;
     temp = 0;
     for (i = 2; i < N; i += 2) {
-        temp = std::abs(src_copy[(size_t) i + 1] - src_copy[(size_t) i - 1]);
-        change_time = src_copy[(size_t) i] - src_copy[(size_t) i - 2];
+        temp = std::abs(src_copy[i + 1] - src_copy[i - 1]);
+        change_time = src_copy[(size_t) i] - src_copy[i - 2];
         temp /= change_time;
         if (i != 2 && std::abs(temp - pre_change) / pre_change > 3.0)continue;
         pre_change = temp;
         if (std::abs(src_copy[(size_t) i + 1]) < 7.0) {
-            dst_tv_data.push_back(src_copy[(size_t) i]);
-            dst_tv_data.push_back(src_copy[(size_t) i + 1]);
+            dst_tv_data.push_back(src_copy[ i]);
+            dst_tv_data.push_back(src_copy[ i + 1]);
         }
     }
 
@@ -201,7 +199,7 @@ void velocity_data_filt(FParam &src_tv_data, FParam &dst_tv_data) {
 * @param start_time 保存tp_data中的第一个时间数据的值
 */
 void calc_velocity_data(FParam &tp_data, FParam &tv_data, long double *start_time) {
-    static int i;
+    static size_t i;
     static size_t N;
     static long double now_changes, now_T, now_V;
 
@@ -210,7 +208,7 @@ void calc_velocity_data(FParam &tp_data, FParam &tv_data, long double *start_tim
     *start_time = tp_data[0];
 
     for (i = 2; i < N; i += 2) {
-        now_changes = tp_data[(size_t) i + 1] - tp_data[(size_t) i - 1];
+        now_changes = tp_data[i + 1] - tp_data[i - 1];
 
         if (now_changes > CV_PI) {
             now_changes -= CV_2PI;
@@ -219,9 +217,9 @@ void calc_velocity_data(FParam &tp_data, FParam &tv_data, long double *start_tim
         }
         if (std::abs(now_changes) > CV_PI / 4.0 || std::abs(now_changes) < 0.01)continue;
 
-        now_T = (tp_data[(size_t) i - 2] + tp_data[(size_t) i]) / 2.0;
+        now_T = (tp_data[i - 2] + tp_data[i]) / 2.0;
         now_T -= tp_data[0];
-        now_V = now_changes / (tp_data[(size_t) i] - tp_data[(size_t) i - 2]);
+        now_V = now_changes / (tp_data[i] - tp_data[i - 2]);
 
         tv_data.push_back(now_T);
         tv_data.push_back(now_V);
@@ -238,7 +236,7 @@ void calc_velocity_data(FParam &tp_data, FParam &tv_data, long double *start_tim
 * @param dst_ti_data 输出位置变化的数值积分数据集
 */
 void intg_data_filt(FParam &src_ti_data, FParam &dst_ti_data) {
-    static int i;
+    static size_t i;
     static size_t N;
     static long double temp;
     FParam src_copy(src_ti_data);
@@ -251,10 +249,10 @@ void intg_data_filt(FParam &src_ti_data, FParam &dst_ti_data) {
     dst_ti_data.push_back(src_copy[0]);
     dst_ti_data.push_back(src_copy[1]);
     for (i = 2; i < N; i += 2) {
-        temp = std::abs(src_copy[(size_t) i + 1] - src_copy[(size_t) i - 1]);
+        temp = std::abs(src_copy[i + 1] - src_copy[i - 1]);
         if (temp > 0) {
-            dst_ti_data.push_back(src_copy[(size_t) i]);
-            dst_ti_data.push_back(src_copy[(size_t) i + 1]);
+            dst_ti_data.push_back(src_copy[i]);
+            dst_ti_data.push_back(src_copy[i + 1]);
         }
     }
 

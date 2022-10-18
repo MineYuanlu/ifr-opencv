@@ -15,9 +15,13 @@ namespace ifr {
                 OUTPUT("画面显示线程 已运行")
                 while (true) {
                     mtx.lock();
+                    cout << "啊???" << endl;
                     for (const auto &d: datas) {
+                        waitKey(30);
                         imshow(d.first, d.second());
+                        waitKey(30);
                     }
+                    cout << "啊???1" << endl;
                     datas.clear();
                     mtx.unlock();
                     waitKey(30);

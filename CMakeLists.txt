@@ -28,6 +28,8 @@ if (CMAKE_HOST_SYSTEM_NAME MATCHES "Linux")
     else ()
         add_compile_options(-O0 -g)
     endif ()
+else()
+    add_compile_definitions(WIN32_LEAN_AND_MEAN)
 endif ()
 
 #寻找CUDA库
@@ -61,21 +63,16 @@ include_directories(lib)
 aux_source_directory(${PROJECT_SOURCE_DIR}/lib/basic LIB_BASIC)
 aux_source_directory(${PROJECT_SOURCE_DIR}/lib/web LIB_WEB)
 aux_source_directory(${PROJECT_SOURCE_DIR}/lib/rapidjson LIB_JSON)
+aux_source_directory(${PROJECT_SOURCE_DIR}/lib/predict_needed LIB_PREDICT)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src SRCX)
-add_executable(${PROJECT_NAME} ${SRCX} ${LIB_BASIC} ${LIB_WEB} ${LIB_JSON})
+aux_source_directory(${PROJECT_SOURCE_DIR}/src/tasks SRC_TASK)
+add_executable(${PROJECT_NAME} ${SRCX} ${SRC_TASK} ${LIB_BASIC} ${LIB_WEB} ${LIB_JSON} ${LIB_PREDICT})
 #添加链接库
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${OpenCV_LIBS} gxiapi.so -lpthread -lm)
 
 
-# opencv libraries
-#target_link_libraries(${PROJECT_NAME} ${OpenCV _LIBS} libgxiapi.so)
-
-#获取代码，在项目中，将所有代码都放在src文件夹中
-#AUX_SOURCE_DIRECTORY(src DIR_SRCS)
-#MESSAGE(STATUS "Src file: ${DIR_SRCS}")
-#编译可执行程序
-#ADD_EXECUTABLE(${PROJECT_NAME} ${DIR_SRCS})
-
-
-##add_executable(test main.cpp)
-
+if (CMAKE_HOST_SYSTEM_NAME MATCHES "Linux")
+    TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${OpenCV_LIBS} gxiapi.so -lpthread -lm)
+else()
+    TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${OpenCV_LIBS} "C:\\Program Files\\Daheng Imaging\\GalaxySDK\\Samples\\VC SDK\\lib\\x64\\GxIAPI.lib")
+    set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "/EHsc")
+endif ()

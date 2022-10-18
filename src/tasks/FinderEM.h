@@ -10,9 +10,10 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/core.hpp>
 #include <random>
-#include "defs.h"
-#include "Record.h"
-#include "ImgDisplay.h"
+#include "../defs.h"
+#include "../Record.h"
+#include "../ImgDisplay.h"
+#include "../DataWaiter.h"
 
 #if USE_GPU
 
@@ -132,6 +133,14 @@ namespace EM {
          */
         void format_rrect(Point2f *src, Point2f *dist);
 
+        /**
+         * 使用缓存获取旋转矩形框(带缓存)
+         */
+        static const RotatedRect &
+        getRrect(const vector<vector<Point>> &contours, vector<RotatedRect> &cache, const size_t index) {
+            if (cache[index].size.area() <= 0)cache[index] = minAreaRect(contours[index]);
+            return cache[index];
+        }
     }
 
     /**
@@ -168,12 +177,12 @@ namespace EM {
         double getDistance(const vector<vector<Point>> &contours, const vector<Vec4i> &hierarchy,
                            size_t index, vector<RotatedRect> &cache) {
             if (cache.size() < hierarchy.size())cache.resize(hierarchy.size());
-            const auto box = getRrect(contours, cache, index);
+            const auto box = Tools::getRrect(contours, cache, index);
             const auto S = box.size.area();
 
             size_t cnt = 1;
             for (auto i = hierarchy[index][2]; i >= 0; i = hierarchy[i][0]) {
-                const auto rr = getRrect(contours, cache, i);
+                const auto rr = Tools::getRrect(contours, cache, i);
                 if (rr.size.area() * ignoreFactor < S)continue;
                 cnt++;
             }
@@ -185,27 +194,26 @@ namespace EM {
         }
 
 
+        /**
+         * 获取首个子区域 (忽略过小区域)
+         * @param contours 轮廓点
+         * @param hierarchy 结构
+         * @param index 目标
+         * @param cache minAreaRect缓存, 通过此向量重复获取同一个轮廓的最小框
+         * @return 旋转矩形
+         */
         const RotatedRect getFirstSubRRect(const vector<vector<Point>> &contours, const vector<Vec4i> &hierarchy,
                                            size_t index, vector<RotatedRect> &cache) {
             if (cache.size() < hierarchy.size())cache.resize(hierarchy.size());
-            const auto S = getRrect(contours, cache, index).size.area();
+            const auto S = Tools::getRrect(contours, cache, index).size.area();
             for (auto i = hierarchy[index][2]; i >= 0; i = hierarchy[i][0]) {
-                const auto rr = getRrect(contours, cache, i);
+                const auto rr = Tools::getRrect(contours, cache, i);
                 if (rr.size.area() * ignoreFactor < S)continue;
                 return rr;
             }
             return RotatedRect();
         }
 
-    private:
-        /**
-         * 使用缓存获取rr框(带缓存)
-         */
-        static RotatedRect &
-        getRrect(const vector<vector<Point>> &contours, vector<RotatedRect> &cache, const size_t index) {
-            if (cache[index].size.area() <= 0)cache[index] = minAreaRect(contours[index]);
-            return cache[index];
-        }
     };
 
 
@@ -214,9 +222,13 @@ namespace EM {
      */
     class Assets {
     public:
+#if __OS__ == __OS_Linux__
         /**资源文件夹*/
         const std::string dir = std::string(R"(/home/nvidia/2022-yuanlu/assets/)");
-
+#elif __OS__ == __OS_Windows__
+        /**资源文件夹*/
+        const std::string dir = std::string(R"(D:\yuanlu\dev\cpp\ifr-opencv\assets\)");
+#endif
         Mat active = imread(dir + "active.png", IMREAD_GRAYSCALE);
         Size activeSize = active.size();
         Mat activeHist = getHist(active);
@@ -229,6 +241,7 @@ namespace EM {
 
 
         Assets() {
+            OUTPUT("加载assets...")
         }
 
     private:
@@ -247,7 +260,6 @@ namespace EM {
         }
     };
 
-    static Assets assets;
 
     /**
      * 寻找目标
@@ -258,10 +270,7 @@ namespace EM {
         /**处理帧率*/
         double fps = 0;
 #endif
-#if DEBUG_IMG
-        Mat debug_src, debug_img;
-        datas::TargetInfo debug_ti;
-#endif
+        Assets *assets;
         const int thread_id;//处理线程ID
     public:
         /**
@@ -279,9 +288,10 @@ namespace EM {
         );
 
 
-        Finder(int id) : thread_id(id) {
+        Finder(int id, Assets *assets) : thread_id(id), assets(assets) {
 #if DEBUG_IMG
             namedWindow("finder img " + to_string(id), WINDOW_NORMAL);
+            namedWindow("finder src " + to_string(id), WINDOW_NORMAL);
 #endif
         }
 
@@ -309,10 +319,80 @@ namespace EM {
          * @param fst 变换方向(正向/反向)
          * @param target 比较图片
          * @return 相似度
+         * @deprecated 使用Matcher
          */
         inline double getSimilarity(const Mat &mat, const RotatedRect &rect, const Size &toSize, bool fst,
                                     const Mat &target);
-    };
 
+    public:
+        /**
+         * 注册任务
+         */
+        static void registerTask() {
+            static const int finder_thread_amount = THREAD_IDENTITY;//TODO 移动为配置文件
+            static const std::string io_src = "src";
+            static const std::string io_output = "target";
+            ifr::Plans::TaskDescription description{"find", "能量机关目标识别"};
+            description.io[io_src] = {TYPE_NAME(datas::FrameData), "输入的图像数据", true};
+            description.io[io_output] = {TYPE_NAME(datas::TargetInfo), "输出的目标信息", false};
+
+            ifr::Plans::registerTask("FinderEM", description, [](auto &io, auto state, auto &cb) {
+                ifr::Plans::Tools::waitState(state, 1);
+
+                //初始化
+                Assets *assets = new Assets(); //资源
+                vector<Finder *> finders;     //识别器
+                finders.reserve(finder_thread_amount);
+                for (int i = 0; i < finder_thread_amount; ++i)finders.push_back(new Finder(i, assets));
+                thread *finder_threads = new thread[finder_thread_amount]; //识别线程
+
+                ifr::Plans::Tools::finishAndWait(cb, state, 1);
+
+                //运行
+                const auto &cname_src = io[io_src].channel;
+                ifr::DataWaiter<uint64_t, datas::TargetInfo> dw;  //数据整合
+
+                for (const auto &finder: finders) {
+                    finder_threads[finder->thread_id] = thread([&cname_src, &dw, &finder, &state]() {
+                        umt::Subscriber<datas::FrameData> fdIn(cname_src);
+                        while (*state < 3) {
+                            try {
+                                const auto data = fdIn.pop_for(COMMON_LOOP_WAIT);
+                                dw.start(data.id);
+                                auto ti = finder->run(data.mat);
+                                ti.time = data.time;
+                                ti.receiveTick = data.receiveTick;
+                                dw.finish(data.id, ti);
+                            } catch (umt::MessageError_Timeout &x) {
+                                OUTPUT("[FinderEM] Finder" + to_string(finder->thread_id) + "输出数据等待超时 " +
+                                       std::to_string(COMMON_LOOP_WAIT) + "ms")
+                            }
+                        }
+                    });
+                    while (!finder_threads[finder->thread_id].joinable());
+                }
+
+
+                umt::Publisher<datas::TargetInfo> tiOut(io[io_output].channel);//发布者
+
+                cb(2);
+                while (*state < 3) {
+                    try {
+                        const auto data = dw.pop_for(COMMON_LOOP_WAIT);
+                        tiOut.push(data.second);
+                    } catch (ifr::Timeout) {
+                        OUTPUT("[FinderEM] DW 输出数据等待超时 " + std::to_string(COMMON_LOOP_WAIT) + "ms")
+                    }
+                }
+                for (int i = 0; i < finder_thread_amount; ++i)finder_threads[i].join();//等待识别线程退出
+                ifr::Plans::Tools::finishAndWait(cb, state, 3);
+                delete assets;
+                for (const auto &e: finders)delete e;
+                finders.clear();
+                delete[] finder_threads;
+                cb(4);
+            });
+        }
+    };
 }
 #endif //OPENCV_TEST_FINDEREM_H
