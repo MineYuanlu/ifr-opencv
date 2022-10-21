@@ -284,8 +284,8 @@ namespace ifr {
          * @param arg2 阶段数字, 会随着状态不同而改变, 只读
          * @param arg3 阶段完成的回调函数, 要传入完成的阶段数字
          */
-        typedef std::function<void(std::map<const std::string, TaskIOInfo> &, const int *,
-                                   const std::function<void(const int)> &)> Task;
+        typedef std::function<void(std::map<const std::string, TaskIOInfo>, const int *,
+                                   const std::function<void(const int)>)> Task;
 
         /**
          * 初始化操作, 包括读取流程等
@@ -299,8 +299,8 @@ namespace ifr {
          * @param initializer 初始化器, 可以返回一些数据, 传入运行体中
          * @param runner 运行体 ()
          */
-        void registerTask(const std::string &name, const TaskDescription &description,
-                          const Task &registerTask);
+        void registerTask(const std::string &name, const TaskDescription description,
+                          const Task registerTask);
 
         /***
          * 获取全部任务的描述信息
@@ -309,12 +309,16 @@ namespace ifr {
         std::string getTaskDescriptionsJson();
 
         /**
-         * 获取任务组的描述
+         * 获取流程列表
          * @return json
          */
-        std::string getTaskGroupsJson();
-
         std::string getPlanListJson();
+
+        /**
+         * 获取流程状态
+         * @return json
+         */
+        std::string getPlanStateJson();
 
         /**@return 计划列表*/
         std::vector<std::string> getPlanList();
@@ -335,8 +339,9 @@ namespace ifr {
         /**
          * 删除计划信息
          * @param name 计划名称
+         * @return 是否成功删除 false: 不存在/IO错误
          */
-        void removePlanInfo(const std::string &name);
+        bool removePlanInfo(const std::string &name);
 
 
         /**
@@ -346,10 +351,13 @@ namespace ifr {
         void usePlanInfo(const std::string &name);
 
         /**启动计划*/
-        void startPlan();
+        bool startPlan();
 
         /**停止计划*/
         void stopPlan();
+
+        /**@return 是否正在运行计划*/
+        bool isRunning();
 
         namespace Tools {
             /**

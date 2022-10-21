@@ -288,7 +288,7 @@ namespace EM {
         );
 
 
-        Finder(int id, Assets *assets) : thread_id(id), assets(assets) {
+        Finder(int id, Assets *assets) : assets(assets), thread_id(id) {
 #if DEBUG_IMG
             namedWindow("finder img " + to_string(id), WINDOW_NORMAL);
             namedWindow("finder src " + to_string(id), WINDOW_NORMAL);
@@ -336,14 +336,14 @@ namespace EM {
             description.io[io_src] = {TYPE_NAME(datas::FrameData), "输入的图像数据", true};
             description.io[io_output] = {TYPE_NAME(datas::TargetInfo), "输出的目标信息", false};
 
-            ifr::Plans::registerTask("FinderEM", description, [](auto &io, auto state, auto &cb) {
+            ifr::Plans::registerTask("FinderEM", description, [](auto io, auto state, auto cb) {
                 ifr::Plans::Tools::waitState(state, 1);
 
                 //初始化
-                Assets *assets = new Assets(); //资源
+                Assets *_assets = new Assets(); //资源
                 vector<Finder *> finders;     //识别器
                 finders.reserve(finder_thread_amount);
-                for (int i = 0; i < finder_thread_amount; ++i)finders.push_back(new Finder(i, assets));
+                for (int i = 0; i < finder_thread_amount; ++i)finders.push_back(new Finder(i, _assets));
                 thread *finder_threads = new thread[finder_thread_amount]; //识别线程
 
                 ifr::Plans::Tools::finishAndWait(cb, state, 1);
@@ -386,7 +386,7 @@ namespace EM {
                 }
                 for (int i = 0; i < finder_thread_amount; ++i)finder_threads[i].join();//等待识别线程退出
                 ifr::Plans::Tools::finishAndWait(cb, state, 3);
-                delete assets;
+                delete _assets;
                 for (const auto &e: finders)delete e;
                 finders.clear();
                 delete[] finder_threads;

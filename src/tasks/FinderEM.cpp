@@ -62,15 +62,10 @@ namespace EM {
 
         auto ti = findTargets(USE_GPU_SELECT(gpuMat, img1), contours, hierarchy); //寻找目标
 
-        DEBUG_nowTime(t_5);
-        if (ti.findTarget) {
-            auto x = ti.nowTarget.center - ti.nowTargetAim.center;
-        }
-
-        DEBUG_nowTime(t_6)
+        DEBUG_nowTime(t_5)
 
 #if DEBUG_TIME || DEBUG_IMG
-        fps = 1 / ((t_6 - t_0) / getTickFrequency());
+        fps = 1 / ((t_5 - t_0) / getTickFrequency());
 #endif
 #if DEBUG_TIME
         times["总时间"] = (t_end - t_0) / getTickFrequency() * 1000;
@@ -79,7 +74,6 @@ namespace EM {
         times["下载"] = (t_3 - t_2) / getTickFrequency() * 1000;
         times["轮廓"] = (t_4 - t_3) / getTickFrequency() * 1000;
         times["寻找"] = (t_5 - t_4) / getTickFrequency() * 1000;
-        times["圆心"] = (t_6 - t_5) / getTickFrequency() * 1000;
 #endif
 #if DEBUG_IMG
         ifr::ImgDisplay::setDisplay("finder src " + to_string(thread_id), [src]() -> cv::Mat {
@@ -231,12 +225,12 @@ namespace EM {
                 if (rr.size.area() < tarSize)continue;//过滤掉面积过小的物体
 
                 const auto vec13 = rr.center - pt1;
-                auto α = vec11.dot(vec13);
+                auto a = vec11.dot(vec13);
 
-                if (α < 0)continue;//位于 风车臂近底部 以上 (即过 装甲板中心点关于风车臂中心点的对称点 做垂直于风车臂中心线的垂线 以上的部分)
+                if (a < 0)continue;//位于 风车臂近底部 以上 (即过 装甲板中心点关于风车臂中心点的对称点 做垂直于风车臂中心线的垂线 以上的部分)
 
 
-                auto disPt = α / s11;//线上的投影点 到 装甲板关于风车臂中心点的对称点 的距离
+                auto disPt = a / s11;//线上的投影点 到 装甲板关于风车臂中心点的对称点 的距离
                 const auto disLine = abs(A * rr.center.x + B * rr.center.y + C) / sA2B2; //点到直线的距离
 
                 static const float weightPt = 3;//Pt 距离 的权重

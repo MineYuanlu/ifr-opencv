@@ -10,16 +10,16 @@ namespace ifr {
         /**访问锁*/
         std::recursive_mutex mtx;
         /**任务描述*/std::string taskDescriptionsJson = "{}";
-        /**任务组*/std::string taskGroupJson = "[]";
+        /**计划信息json*/std::string planListJson = "[]";
 
 
         /**所有任务的注册数据*/
         std::map<std::string, const Task> tasks;
 
-        /**所有计划信息*/
-        std::map<std::string, PlanInfo> plans;
 
-        std::string planListJson = "[]";
+        std::map<std::string, PlanInfo> plans;  //所有计划信息
+        std::string currentPlans;               //当前选中的计划信息
+
 
         Config::ConfigController cc;
 
@@ -37,16 +37,6 @@ namespace ifr {
             taskDescriptionsWriter.Flush();
             taskDescriptionsJson = taskDescriptions.GetString();
             taskDescriptionsJson.push_back('}');
-
-            //----
-            static rapidjson::StringBuffer taskGroup;
-            static rapidjson::Writer<rapidjson::StringBuffer, Document::EncodingType, UTF8<>> taskGroupWriter(
-                    taskGroup);
-            if (taskGroup.GetLength() <= 0)taskGroupWriter.StartArray();
-            taskGroupWriter.String(description.group);
-            taskGroupWriter.Flush();
-            taskGroupJson = taskDescriptions.GetString();
-            taskGroupJson.push_back(']');
 
         }
 
@@ -66,6 +56,7 @@ namespace ifr {
                 Document d;
                 d.ParseStream(isw);
                 plans.insert(std::pair<std::string, PlanInfo>(name, PlanInfo::read(d)));
+                fin.close();
             } else {
                 plans.insert(std::pair<std::string, PlanInfo>(name, {}));
             }
@@ -73,10 +64,10 @@ namespace ifr {
             std::ifstream fin("runtime/plans/" + name + ".data");
             if (fin.is_open()) {
                 plans.insert(std::pair<std::string, PlanInfo>(name, PlanInfo::read(fin)));
+                fin.close();
             } else {
                 plans.insert(std::pair<std::string, PlanInfo>(name, {}));
             }
-            fin.close();
 #endif
         }
 
@@ -107,8 +98,8 @@ namespace ifr {
 #endif
         }
 
-        void registerTask(const std::string &name, const TaskDescription &description,
-                          const Task &registerTask) {
+        void registerTask(const std::string &name, const TaskDescription description,
+                          const Task registerTask) {
             std::unique_lock<std::recursive_mutex> lock(mtx);
             updateTaskDescriptionsJson(name, description);
             tasks.insert(std::pair<std::string, const Task>(name, registerTask));
@@ -119,10 +110,6 @@ namespace ifr {
             return taskDescriptionsJson;
         }
 
-        std::string getTaskGroupsJson() {
-            std::unique_lock<std::recursive_mutex> lock(mtx);
-            return taskGroupJson;
-        }
 
         std::string getPlanListJson() {
             std::unique_lock<std::recursive_mutex> lock(mtx);
@@ -137,22 +124,47 @@ namespace ifr {
             return planListJson;
         }
 
+        std::string getPlanStateJson() {
+            std::unique_lock<std::recursive_mutex> lock(mtx);
+            StringBuffer buf;
+            Writer<StringBuffer> w(buf);
+
+            w.StartObject();
+            w.Key("current"), w.String(currentPlans);
+            w.Key("running"), w.Bool(isRunning());
+            w.EndObject();
+            w.Flush();
+
+            return std::string(buf.GetString(), buf.GetLength());
+        }
+
         void init() {
-            static ifr::Config::ConfigInfo<std::map < std::string, PlanInfo> > info = {
+            static ifr::Config::ConfigInfo<void> info = {
                     [](auto *a, auto &w) {
+                        std::unique_lock<std::recursive_mutex> lock(mtx);
+                        w.StartObject();
+
+                        w.Key("list");
                         w.StartArray();
                         for (const auto &e: plans)w.String(e.first);
                         w.EndArray();
+
+                        w.Key("current"), w.String(currentPlans);
+
+                        w.EndObject();
                     },
                     [](auto *a, const rapidjson::Document &d) {
-                        for (const auto &item: d.GetArray()) {
+                        std::unique_lock<std::recursive_mutex> lock(mtx);
+                        for (const auto &item: d["list"].GetArray()) {
                             std::string name = item.GetString();
                             if (!checkPlanName(name))continue;
                             readPlanInfo(name);
                         }
+                        planListJson = "";
+                        currentPlans = d["current"].GetString();
                     }
             };
-            cc = ifr::Config::createConfig("plan-list", &plans, info);
+            cc = ifr::Config::createConfig("plan-list", (void *) NULL, info);
             cc.load();
         }
 
@@ -162,7 +174,6 @@ namespace ifr {
             vec.reserve(plans.size());
             for (const auto &e: plans)vec.push_back(e.first);
             return vec;
-
         }
 
         PlanInfo getPlanInfo(const std::string &name) {
@@ -170,20 +181,6 @@ namespace ifr {
             return plans[name];
         }
 
-        void savePlanInfo(const PlanInfo &info) {
-            std::unique_lock<std::recursive_mutex> lock(mtx);
-            planListJson = "";
-            plans[info.name] = info;
-            writePlanInfo(info);
-            cc.save();
-        }
-
-        void removePlanInfo(const std::string &name) {
-            std::unique_lock<std::recursive_mutex> lock(mtx);
-            planListJson = "";
-            plans.erase(name);
-            cc.save();
-        }
 
 
         ///运行数据, 包括全部流程控制
@@ -217,6 +214,7 @@ namespace ifr {
                 if (!isStepFinish())return false;
                 waitingTasks = std::set<std::string>(runningTasks.begin(), runningTasks.end());
                 state++;
+                OUTPUT("paln: arrive state " + std::to_string(state))
                 return true;
             }
 
@@ -231,7 +229,7 @@ namespace ifr {
                     if (b)SLEEP(delay);
                     nextStep();
                 }
-                if (waitFinish)while (!isStepFinish())SLEEP(delay);
+                if (waitFinish)while (state == target && !isStepFinish())SLEEP(delay);
             }
 
             /**
@@ -239,7 +237,7 @@ namespace ifr {
              * @param target
              */
             inline void goStep(int target) {
-                std::thread t = std::thread([&target]() {
+                std::thread t = std::thread([target]() {
                     untilStep(target);
                 });
                 while (!t.joinable());
@@ -251,6 +249,7 @@ namespace ifr {
              */
             void reset() {
                 std::unique_lock<std::recursive_mutex> lock(RunData::mtx);
+                OUTPUT("plan: reset: running=" + std::to_string(running))
                 if (!running)return;
 
                 untilStep(4, true);//结束
@@ -265,30 +264,36 @@ namespace ifr {
             /**
              * 启动流程
              */
-            void start(const std::string &name) {
+            bool start(const std::string &name) {
                 std::unique_lock<std::recursive_mutex> lock(RunData::mtx);
                 if (running)reset();
                 currentPlan = name;
 
                 const auto rid = ++runID;
                 const auto plan = plans[name];
+                if (!plan.loaded)return false;
 
+                int cnt = 0;//任务启动计数
                 for (const auto &ele: plan.tasks) {
                     const auto &tname = ele.first;
                     const auto &task = ele.second;
                     if (!task.enable)continue;
+                    cnt++;
 
                     std::map<const std::string, TaskIOInfo> io(task.io.begin(), task.io.end());
-
                     runningTasks.insert(tname);
 
-                    const auto &regTask = tasks[tname];
-                    std::thread t = std::thread([&regTask, &rid, &tname, &io]() {
-                        regTask(io, &state, [&rid, &tname](const auto finish) {
-                            std::unique_lock<std::recursive_mutex> lock(RunData::mtx);
-                            if (runID != rid || finish != state)return;
-                            waitingTasks.erase(tname);
-                        });
+                    const auto regTask = tasks[tname];
+                    std::thread t = std::thread([regTask, rid, tname, io]() {
+                        try {
+                            regTask(io, &state, [rid, tname](const auto finish) {
+                                std::unique_lock<std::recursive_mutex> lock(RunData::mtx);
+                                if (runID != rid || finish != state)return;
+                                waitingTasks.erase(tname);
+                            });
+                        } catch (...) {
+                            OUTPUT("[Plan] Runtime error: " + tname);
+                        }
                         if (runID != rid)return;
                         std::unique_lock<std::recursive_mutex> lock(RunData::mtx);
                         finishingTasks.erase(tname);
@@ -299,15 +304,53 @@ namespace ifr {
                 finishingTasks = std::set<std::string>(runningTasks.begin(),
                                                        runningTasks.end());
                 goStep(2);//进入运行阶段
-                running = true;
+                return running = cnt > 0;
             }
+        }
+
+        void savePlanInfo(const PlanInfo &info) {
+            std::unique_lock<std::recursive_mutex> lock(mtx);
+            planListJson = "";
+            plans[info.name] = info;
+            writePlanInfo(info);
+            cc.save();
+            if (currentPlans == info.name)stopPlan();
+        }
+
+        bool removePlanInfo(const std::string &name) {
+            std::unique_lock<std::recursive_mutex> lock(mtx);
+            if (currentPlans == name)currentPlans = "";
+            planListJson = "";
+            plans.erase(name);
+            cc.save();
+            stopPlan();
+            return true;
         }
 
         void usePlanInfo(const std::string &name) {
             std::unique_lock<std::recursive_mutex> lock(mtx);
-            RunData::start(name);
+            if (currentPlans != name) {
+                currentPlans = name;
+                cc.save();
+                stopPlan();
+            }
         }
 
+        /**启动计划*/
+        bool startPlan() {
+            std::unique_lock<std::recursive_mutex> lock(mtx);
+            if (currentPlans.empty() || !plans[currentPlans].loaded)return false;
+            return RunData::start(currentPlans);
+        }
+
+        /**停止计划*/
+        void stopPlan() {
+            RunData::reset();
+        }
+
+        bool isRunning() {
+            return RunData::running;
+        }
 
     }
 } // ifr

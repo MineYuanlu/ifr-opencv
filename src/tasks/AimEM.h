@@ -69,7 +69,7 @@ namespace EM {
                 description.io[io_src] = {TYPE_NAME(datas::TargetInfo), "目标信息", true};
                 description.io[io_output] = {TYPE_NAME(datas::OutInfo), "输出数据", false};
 
-                ifr::Plans::registerTask("AimEM direct", description, [](auto &io, auto state, auto &cb) {
+                ifr::Plans::registerTask("AimEM direct", description, [](auto io, auto state, auto cb) {
                     ifr::Plans::Tools::waitState(state, 1);
 
                     AimEM *aimEm = new AimEM(false);
@@ -95,7 +95,7 @@ namespace EM {
                 description.io[io_src] = {TYPE_NAME(datas::TargetInfo), "目标信息", true};
                 description.io[io_output] = {TYPE_NAME(datas::OutInfo), "输出数据", false};
 
-                ifr::Plans::registerTask("AimEM forecast", description, [](auto &io, auto state, auto &cb) {
+                ifr::Plans::registerTask("AimEM forecast", description, [](auto io, auto state, auto cb) {
                     ifr::Plans::Tools::waitState(state, 1);
 
                     AimEM *aimEm = new AimEM(true);

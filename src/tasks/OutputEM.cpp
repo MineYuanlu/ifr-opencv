@@ -33,7 +33,7 @@ namespace EM {
 
 
         void outputConsole(const datas::OutInfo &info) {
-            int64 delay = (cv::getTickCount() - info.receiveTick) / cv::getTickFrequency() * 1000;
+            long long int delay = (cv::getTickCount() - info.receiveTick) / cv::getTickFrequency() * 1000;
             printf("T: %d,vec: [%9.3f, %9.3f], a: %d, delay: %lld\n", info.targetType, -info.velocity.x,
                    info.velocity.y,
                    info.activeCount, delay);
@@ -69,7 +69,7 @@ namespace EM {
                 ifr::Plans::TaskDescription description{"output", "通过串口输出数据"};
                 description.io[io_output] = {TYPE_NAME(datas::OutInfo), "输出数据", true};
 
-                ifr::Plans::registerTask("Serial PortEM", description, [](auto &io, auto state, auto &cb) {
+                ifr::Plans::registerTask("Serial PortEM", description, [](auto io, auto state, auto cb) {
                     ifr::Plans::Tools::waitState(state, 1);
                     open();
                     umt::Subscriber<datas::OutInfo> goIn(io[io_output].channel);
@@ -90,7 +90,7 @@ namespace EM {
             {
                 ifr::Plans::TaskDescription description{"output", "通过控制台打印数据"};
                 description.io[io_output] = {TYPE_NAME(datas::OutInfo), "输出数据", true};
-                ifr::Plans::registerTask("Console PrintEM", description, [](auto &io, auto state, auto &cb) {
+                ifr::Plans::registerTask("Console PrintEM", description, [](auto io, auto state, auto cb) {
                     ifr::Plans::Tools::waitState(state, 1);
                     umt::Subscriber<datas::OutInfo> goIn(io[io_output].channel);
                     ifr::Plans::Tools::finishAndWait(cb, state, 1);

@@ -60,7 +60,7 @@ namespace ifr {
             Plans::TaskDescription description{"input", "相机输入, 负责采集图像"};
             description.io[io_src] = {TYPE_NAME(datas::FrameData), "输出一帧数据", false};
 
-            Plans::registerTask("camera", description, [](auto &io, auto state, auto &cb) {
+            Plans::registerTask("camera", description, [](auto io, auto state, auto cb) {
                 Plans::Tools::waitState(state, 1);
                 auto camera = instance = new Camera(io[io_src].channel);
                 if (camera->initCamera() != GX_STATUS_SUCCESS) exit(-1);

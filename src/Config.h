@@ -38,6 +38,19 @@ namespace ifr {
         };
 
         /**
+         * 创建文件夹 (递归创建, 调用系统命令)
+         * @param path 文件夹路径
+         */
+        void mkDir(std::string path);
+
+        /**
+        * 获取路径的文件夹
+        * @param fname 文件路径
+        * @return 所在文件夹
+        */
+        std::string getDir(std::string fname);
+
+        /**
          * 注册一个配置文件
          * @tparam T 配置文件数据类型
          * @param name 配置文件名称
@@ -47,9 +60,7 @@ namespace ifr {
         template<typename T>
         ConfigController createConfig(const std::string &name, T *data, const ConfigInfo<T> &info) {
             const auto fname = dir + name + ".json";
-            std::cout << fname << std::endl;
             mkDir(getDir(fname));
-            std::cout << fname << std::endl;
             ConfigController cc = {
                     [&info, fname, &data]() {
                         try {
@@ -103,18 +114,6 @@ namespace ifr {
             return cc;
         }
 
-        /**
-         * 创建文件夹 (递归创建, 调用系统命令)
-         * @param path 文件夹路径
-         */
-        void mkDir(std::string path);
-
-        /**
-        * 获取路径的文件夹
-        * @param fname 文件路径
-        * @return 所在文件夹
-        */
-        std::string getDir(std::string fname);
     }
 } // ifr
 

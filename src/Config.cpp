@@ -12,7 +12,7 @@ namespace ifr {
             system(("mkDir \"" + path + "\" >nul 2>nul").c_str());
 #elif __OS__ == __OS_Linux__
             std::replace(path.begin(), path.end(), '\\', '/');
-            system(("mkir -p \"" + path+"\" 1>/dev/null 2>/dev/null")+.c_str());
+            system(("mkdir -p \"" + path + "\" 1>/dev/null 2>/dev/null").c_str());
 #endif
         }
 

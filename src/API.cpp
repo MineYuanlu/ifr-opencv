@@ -22,7 +22,7 @@ namespace ifr {
             mg_event_handler_t fn;//处理器
         };
 
-        vector <handler_data> http_route;
+        vector <handler_data> http_route; //所有的路由
 
         map<unsigned long, struct mg_connection *> wsClients;
         mutex mtx;
@@ -53,92 +53,147 @@ namespace ifr {
                     break;
                 }
                 case MG_EV_HTTP_MSG: {
+//                    SLEEP(SLEEP_TIME(1));
                     auto hm = (struct mg_http_message *) ev_data;
+
+                    //OPTIONS
+                    if (!mg_vcmp(&hm->method, "OPTIONS")) {
+                        mg_http_reply(c, 204,
+                                      "Access-Control-Allow-Methods: OPTIONS, GET, POST, DELETE\r\nAllow: OPTIONS, GET, POST, DELETE\r\nAccess-Control-Allow-Origin:*\r\nAccess-Control-Allow-Headers:*\r\n",
+                                      "");
+                        return;
+                    }
+                    //注册的路由
                     for (const auto &r: http_route) {
                         if (!mg_http_match_uri(hm, r.pattern))continue;
                         if (mg_vcmp(&hm->method, r.method))continue;
                         r.fn(c, ev, ev_data, fn_data);
                         return;
                     }
-                    if (!mg_vcmp(&hm->method, "OPTIONS")) {
-//                        mg_http_reply(c, 501, "", "Not Implemented");
-                        mg_http_reply(c, 204,
-                                      "Allow: OPTIONS, GET, POST\r\nAccess-Control-Allow-Origin:*\nAccess-Control-Allow-Headers:*\n",
-                                      "");
-                        return;
-                    }
-                    if (mg_http_match_uri(hm, "/ws")) {
-                        mg_ws_upgrade(c, hm, NULL);
-                    } else {
-                        mg_http_reply(c, 200, "", (STR_MG2STD(hm->uri) + "\n" + STR_MG2STD(hm->proto) + "\n" +
-                                                   STR_MG2STD(hm->query) + "\n" +
-                                                   STR_MG2STD(hm->method)).c_str());;
-                    }
+                    mg_http_reply(c, 404, COMMON_TEXT_HEADER, "Not Found");
+                    return;
+
+
+//                    if (mg_http_match_uri(hm, "/ws")) {
+//                        mg_ws_upgrade(c, hm, NULL);
+//                    } else {
+//                        mg_http_reply(c, 200, "", (STR_MG2STD(hm->uri) + "\n" + STR_MG2STD(hm->proto) + "\n" +
+//                                                   STR_MG2STD(hm->query) + "\n" +
+//                                                   STR_MG2STD(hm->method)).c_str());;
+//                    }
                 }
             }
         }
 
         void registerRoute() {
             http_route.push_back(
-                    {
-                            "/task/descriptions",
-                            "GET",
-                            [](auto c, int ev, auto ev_data, auto fn_data) {
-                                mg_http_reply(c, 200, COMMON_JSON_HEADER,
-                                              ifr::Plans::getTaskDescriptionsJson().c_str());
-                            }
+                    {"/task/descriptions", "GET", [](auto c, int ev, auto ev_data, auto fn_data) {
+                        mg_http_reply(c, 200, COMMON_JSON_HEADER,
+                                      ifr::Plans::getTaskDescriptionsJson().c_str());
+                    }
                     });
             http_route.push_back(
-                    {
-                            "/plan/list",
-                            "GET",
-                            [](auto c, int ev, auto ev_data, auto fn_data) {
-                                mg_http_reply(c, 200, COMMON_JSON_HEADER, ifr::Plans::getPlanListJson().c_str());
-                            }
+                    {"/plan/list", "GET", [](auto c, int ev, auto ev_data, auto fn_data) {
+                        mg_http_reply(c, 200, COMMON_JSON_HEADER, ifr::Plans::getPlanListJson().c_str());
+                    }
                     });
             http_route.push_back(
-                    {
-                            "/plan/get",
-                            "GET",
-                            [](auto c, int ev, auto ev_data, auto fn_data) {
-                                auto hm = (mg_http_message *) ev_data;
-                                auto pname = mgx_getquery(hm->query, "pname");
-                                if (!pname.len) {
-                                    mg_http_reply(c, 401, COMMON_TEXT_HEADER, "no query: pname");
-                                    return;
-                                }
-                                auto plan = ifr::Plans::getPlanInfo(STR_MG2STD(pname));
-                                if (!plan.loaded)
-                                    mg_http_reply(c, 404, COMMON_TEXT_HEADER, "Not Found");
-                                else {
-                                    rapidjson::StringBuffer buf;
-                                    rapidjson::Writer<StringBuffer> w(buf);
-                                    plan(w);
-                                    w.Flush();
-                                    mg_http_reply(c, 200, COMMON_JSON_HEADER, buf.GetString());
-                                }
-
-
-                            }
+                    {"/plan/state", "GET", [](auto c, int ev, auto ev_data, auto fn_data) {
+                        mg_http_reply(c, 200, COMMON_JSON_HEADER, ifr::Plans::getPlanStateJson().c_str());
+                    }
                     });
             http_route.push_back(
-                    {
-                            "/plan/save",
-                            "POST",
-                            [](auto c, int ev, auto ev_data, auto fn_data) {
-                                auto hm = (mg_http_message *) ev_data;
-                                try {
-                                    rapidjson::Document d;
-                                    d.Parse(hm->body.ptr, hm->body.len);
-                                    auto plan = ifr::Plans::PlanInfo::read(d);
-                                    ifr::Plans::savePlanInfo(plan);
-                                    mg_http_reply(c, 200, COMMON_JSON_HEADER, "true");
-                                } catch (...) {
-                                    mg_http_reply(c, 400, COMMON_TEXT_HEADER, "Can not parse PlanInfo");
-                                    return;
-                                }
-
-                            }
+                    {"/plan/get", "GET", [](auto c, int ev, auto ev_data, auto fn_data) {
+                        auto hm = (mg_http_message *) ev_data;
+                        auto pname = mgx_getquery(hm->query, "pname");
+                        if (!pname.len) {
+                            mg_http_reply(c, 400, COMMON_TEXT_HEADER, "no query: pname");
+                            return;
+                        }
+                        auto plan = ifr::Plans::getPlanInfo(STR_MG2STD(pname));
+                        if (!plan.loaded)
+                            mg_http_reply(c, 404, COMMON_TEXT_HEADER, "Not Found");
+                        else {
+                            rapidjson::StringBuffer buf;
+                            rapidjson::Writer<StringBuffer> w(buf);
+                            plan(w);
+                            w.Flush();
+                            mg_http_reply(c, 200, COMMON_JSON_HEADER, buf.GetString());
+                        }
+                    }
+                    });
+            http_route.push_back(
+                    {"/plan/save", "POST", [](auto c, int ev, auto ev_data, auto fn_data) {
+                        auto hm = (mg_http_message *) ev_data;
+                        try {
+                            rapidjson::Document d;
+                            d.Parse(hm->body.ptr, hm->body.len);
+                            auto plan = ifr::Plans::PlanInfo::read(d);
+                            ifr::Plans::savePlanInfo(plan);
+                            mg_http_reply(c, 200, COMMON_JSON_HEADER, "true");
+                        } catch (...) {
+                            mg_http_reply(c, 400, COMMON_TEXT_HEADER, "Can not parse PlanInfo");
+                        }
+                    }
+                    });
+            http_route.push_back(
+                    {"/plan/remove", "DELETE", [](auto c, int ev, auto ev_data, auto fn_data) {
+                        auto hm = (mg_http_message *) ev_data;
+                        auto pname = mgx_getquery(hm->query, "pname");
+                        if (!pname.len) {
+                            mg_http_reply(c, 400, COMMON_TEXT_HEADER, "no query: pname");
+                            return;
+                        }
+                        bool success = ifr::Plans::removePlanInfo(STR_MG2STD(pname));
+                        mg_http_reply(c, 200, COMMON_JSON_HEADER, success ? "true" : "false");
+                    }
+                    });
+            http_route.push_back(
+                    {"/plan/use", "GET", [](auto c, int ev, auto ev_data, auto fn_data) {
+                        auto hm = (mg_http_message *) ev_data;
+                        auto pname = mgx_getquery(hm->query, "pname");
+                        if (!pname.len) {
+                            mg_http_reply(c, 400, COMMON_TEXT_HEADER, "no query: pname");
+                            return;
+                        }
+                        ifr::Plans::usePlanInfo(STR_MG2STD(pname));
+                        mg_http_reply(c, 204, COMMON_JSON_HEADER, "");
+                    }
+                    });
+            http_route.push_back(
+                    {"/plan/start", "GET", [](auto c, int ev, auto ev_data, auto fn_data) {
+                        auto hm = (mg_http_message *) ev_data;
+                        bool success = ifr::Plans::startPlan();
+                        mg_http_reply(c, 200, COMMON_JSON_HEADER, success ? "true" : "false");
+                    }
+                    });
+            http_route.push_back(
+                    {"/plan/stop", "GET", [](auto c, int ev, auto ev_data, auto fn_data) {
+                        auto hm = (mg_http_message *) ev_data;
+                        ifr::Plans::stopPlan();
+                        mg_http_reply(c, 204, COMMON_JSON_HEADER, "");
+                    }
+                    });
+            http_route.push_back(
+                    {"/api.json", "GET", [](auto c, int ev, auto ev_data, auto fn_data) {
+                        static mutex mtx;
+                        static std::string json;
+                        static size_t amount = -1;
+                        unique_lock<mutex> lock(mtx);
+                        if (json.empty() || amount != http_route.size()) {
+                            amount = http_route.size();
+                            rapidjson::StringBuffer buf;
+                            rapidjson::Writer<StringBuffer> w(buf);
+                            w.StartArray();
+                            for (const auto &e: http_route)
+                                w.StartObject(), w.Key("pattern"), w.String(e.pattern), w.Key("method"), w.String(
+                                        e.method), w.EndObject();
+                            w.EndArray();
+                            w.Flush();
+                            json = string(buf.GetString(), buf.GetLength());
+                        }
+                        mg_http_reply(c, 200, COMMON_JSON_HEADER, json.c_str());
+                    }
                     });
         }
 
