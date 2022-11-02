@@ -325,16 +325,18 @@ namespace EM {
          * 注册任务
          */
         static void registerTask() {
-            static const int finder_thread_amount = THREAD_IDENTITY;//TODO 移动为配置文件
             static const std::string io_src = "src";
             static const std::string io_output = "target";
+            static const std::string arg_thread_amount = "thread amount";
             ifr::Plans::TaskDescription description{"find", "能量机关目标识别"};
             description.io[io_src] = {TYPE_NAME(datas::FrameData), "输入的图像数据", true};
             description.io[io_output] = {TYPE_NAME(datas::TargetInfo), "输出的目标信息", false};
+            description.args[arg_thread_amount] = {"识别线程数量", "1", ifr::Plans::TaskArgType::NUMBER};
 
             ifr::Plans::registerTask("FinderEM", description, [](auto io, auto args, auto state, auto cb) {
                 ifr::Plans::Tools::waitState(state, 1);
 
+                const auto finder_thread_amount = stoi(args[arg_thread_amount]);
                 //初始化
                 shared_ptr<Assets> assets_ptr(new Assets());    //资源
                 vector<shared_ptr<Finder>> finders;             //识别器
