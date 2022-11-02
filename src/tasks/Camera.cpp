@@ -18,7 +18,9 @@ namespace ifr {
         if (pFrame->status == 0) {
             cv::Mat src(Camera::instance->m_nImageHeight, Camera::instance->m_nImageWidth, CV_8UC1,
                         (void *) pFrame->pImgBuf);
-            Camera::instance->publisher.push({src, pFrame->nFrameID, pFrame->nTimestamp, cv::getTickCount()});
+            Camera::instance->publisher.push(
+                    {src, pFrame->nFrameID, pFrame->nTimestamp, cv::getTickCount(), datas::FrameType::BayerRG}
+            );
             Camera::instance->feed_dog = true;
 #if DEBUG
             static uint64 nextId = pFrame->nFrameID;//更新ID

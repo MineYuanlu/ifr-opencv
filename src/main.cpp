@@ -1,13 +1,12 @@
 #include <iostream>
-#include "umt/umt.hpp"
 #include <thread>
 #include "defs.h"
 #include "Record.h"
-#include "DataWaiter.h"
 #include "tasks/AimEM.h"
 #include "tasks/OutputEM.h"
 #include "tasks/FinderEM.h"
 #include "tasks/Camera.h"
+#include "tasks/Video.h"
 #include "API.h"
 
 using namespace std;
@@ -22,7 +21,6 @@ struct TimeInfo {
 };
 #endif
 
-void start();
 
 int main() {
     cout << "程序编译时间: " << __DATE__ << " " << __TIME__ << endl;
@@ -39,6 +37,7 @@ int main() {
     EM::AimEM::registerTask();
     ifr::Camera::registerTask();
     EM::Output::registerTask();
+    ifr::Video::registerTask();
 
     ifr::API::init();
 
@@ -50,63 +49,6 @@ int main() {
 }
 
 ifr::DataWaiter<uint64_t, datas::TargetInfo> dw;
-
-void start() {
-    OUTPUT("开始启动")
-
-//    thread MainProgressThread = thread([]() {//识别 - 预测 - 发送
-//        umt::Publisher<datas::OutInfo> goOut(MSG_OUTPUT);//发布者
-//        EM::AimEM::init();
-//        while (true) {
-//            const auto data = dw.pop();
-//            const auto out = EM::AimEM::handle(data.first, data.second);
-//            goOut.push(out);
-//        }
-//    });
-//
-//    while (!MainProgressThread.joinable());
-//    //MainProgressThread.detach();
-//
-//
-//    thread *VisionThreads;
-//    VisionThreads = new thread[THREAD_IDENTITY];
-//
-//    for (int i = 1; i <= THREAD_IDENTITY; i++) {
-//        cout << "启动识别线程 " << i << endl;
-//        VisionThreads[i - 1] = thread([i]() {
-//            umt::Subscriber<datas::FrameData> fdIn(MSG_CAMERA);
-//            EM::Finder finder(i);
-//#if DEBUG_TIME
-//            umt::Publisher<TimeInfo> timeOut(MSG_DEBUG_TIME);//发布者
-//#endif
-//            while (true) {
-//                const auto data = fdIn.pop();
-//                dw.start(data.id);
-//#if DEBUG_TIME
-//                map<string, double> times;
-//#endif
-//                auto ti = finder.run(data.mat
-//#if DEBUG_TIME
-//                        , times
-//#endif
-//                );
-//#if DEBUG_TIME
-//                timeOut.push({times, data.id});
-//#endif
-//                ti.time = data.time;
-//                ti.receiveTick = data.receiveTick;
-//                dw.finish(data.id, ti);
-//            }
-//        });
-//
-//        while (!VisionThreads[i - 1].joinable());
-//        //VisionThreads[i - 1].detach();
-//    }
-//
-//    ifr::API::init();
-
-    while (true);
-}
 
 #if DEBUG_TIME
 

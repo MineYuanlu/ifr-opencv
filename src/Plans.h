@@ -27,6 +27,15 @@ namespace ifr {
         typedef const rapidjson::Value json_in;//json输入
         typedef rapidjson::Writer<rapidjson::OStreamWrapper> json_out; //json输出
 
+        /**
+         * 流程异常
+         */
+        class PlanError : public std::runtime_error {
+        public:
+            PlanError(std::string Message) : std::runtime_error::runtime_error(Message) {}
+        };
+
+
         /**一个IO信息*/
         struct TaskIODescription {
 
@@ -71,6 +80,38 @@ namespace ifr {
             }
         };
 
+        /**任务参数的类型*/
+        enum TaskArgType {
+            STR, NUMBER, BOOL
+        };
+
+        /**任务的参数描述信息*/
+        struct TaskArgDescription {
+            std::string description;//描述
+            std::string defaultValue;//默认值
+            TaskArgType type;//值类型
+
+
+            template<class T>
+            void operator()(rapidjson::Writer<T> &jout) const {
+                jout.StartObject();
+                jout.Key("description"), jout.String(description);
+                jout.Key("defaultValue"), jout.String(defaultValue);
+                jout.Key("type"), jout.Int((int) type);
+                jout.EndObject();
+            }
+
+            static TaskArgDescription read(json_in &jin) {
+                return {
+                        jin["description"].GetString(),
+                        jin["defaultValue"].GetString(),
+                        (TaskArgType) jin["type"].GetInt()
+                };
+            }
+
+
+        };
+
         /**任务的描述信息*/
         struct TaskDescription {
             /**任务所属的组别 */
@@ -79,6 +120,9 @@ namespace ifr {
             std::string description;
             /**任务的IO*/
             std::map<std::string, TaskIODescription> io;
+
+            /**任务参数 (参数名-描述) */
+            std::map<std::string, TaskArgDescription> args;
 
 
             void operator()(std::ostream &fout) const {
@@ -98,6 +142,13 @@ namespace ifr {
                 {
                     jout.StartObject();
                     for (const auto &e: io)jout.Key(e.first), e.second(jout);
+                    jout.EndObject();
+                }
+                jout.Key("args");
+                {
+                    int i = 1;
+                    jout.StartObject();
+                    for (const auto &e: args)jout.Key(e.first), e.second(jout);
                     jout.EndObject();
                 }
                 jout.EndObject();
@@ -124,6 +175,8 @@ namespace ifr {
                         jin["description"].GetString(),
                 };
                 for (auto &m: jin["io"].GetObj())t.io[m.name.GetString()] = TaskIODescription::read(m.value);
+                if (jin["args"].IsObject())
+                    for (auto &m: jin["args"].GetObj())t.args[m.name.GetString()] = TaskArgDescription::read(m.value);
                 return t;
             }
 
@@ -165,6 +218,9 @@ namespace ifr {
             /**任务的IO*/
             std::map<const std::string, TaskIOInfo> io;
 
+            /**任务参数 (参数名-数据) */
+            std::map<std::string, std::string> args;
+
 
             void operator()(std::ostream &fout) const {
                 fout << (enable ? 't' : 'f') << std::endl << io.size() << std::endl;
@@ -178,6 +234,12 @@ namespace ifr {
                 {
                     jout.StartObject();
                     for (const auto &e: io)jout.Key(e.first), e.second(jout);
+                    jout.EndObject();
+                }
+                jout.Key("args");
+                {
+                    jout.StartObject();
+                    for (const auto &e: args)jout.Key(e.first), jout.String(e.second);
                     jout.EndObject();
                 }
                 jout.EndObject();
@@ -203,6 +265,8 @@ namespace ifr {
                         jin["enable"].GetBool(),
                 };
                 for (auto &m: jin["io"].GetObj())t.io[m.name.GetString()] = TaskIOInfo::read(m.value);
+                if (jin["args"].IsObject())
+                    for (auto &m: jin["args"].GetObj())t.args[m.name.GetString()] = m.value.GetString();
                 return t;
             }
         };
@@ -281,10 +345,12 @@ namespace ifr {
          * 4 = 清理阶段, 在此阶段清理回收所有使用过的数据, 包括释放资源, 取消推送/订阅, 内存回收, 关闭窗口
          *
          * @param arg1 每个IO对应的数据
-         * @param arg2 阶段数字, 会随着状态不同而改变, 只读
-         * @param arg3 阶段完成的回调函数, 要传入完成的阶段数字
+         * @param arg2 每个arg对应的数据
+         * @param arg3 阶段数字, 会随着状态不同而改变, 只读
+         * @param arg4 阶段完成的回调函数, 要传入完成的阶段数字
          */
-        typedef std::function<void(std::map<const std::string, TaskIOInfo>, const int *,
+        typedef std::function<void(std::map<const std::string, TaskIOInfo>, std::map<const std::string, std::string>,
+                                   const int *,
                                    const std::function<void(const int)>)> Task;
 
         /**

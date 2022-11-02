@@ -50,32 +50,7 @@ namespace EM {
     }
 
 
-    void AimEM::saveValue() {
-        cc.save();
-    }
-
-
-    void AimEM::readValue() {
-
-        cc.load();
-    }
-
-
-    AimEM::AimEM(bool useForecast) : useForecast(useForecast) {
-        static ifr::Config::ConfigInfo<AimOffset> ci = {
-                [](AimOffset *a, auto &w) {
-                    w.StartObject();
-                    w.Key("x"), w.Int(a->offset_x);
-                    w.Key("y"), w.Int(a->offset_y);
-                    w.EndObject();
-                },
-                [](AimOffset *a, const rapidjson::Document &d) {
-                    a->offset_x = d["x"].GetInt();
-                    a->offset_y = d["y"].GetInt();
-                }
-        };
-        cc = ifr::Config::createConfig("aim", &aimOffset, ci);
-        readValue();
+    AimEM::AimEM(bool useForecast, AimOffset offset) : useForecast(useForecast), aimOffset(offset) {
 #if DEBUG_IMG
         cv::namedWindow(WINNAME_AIM_IMG, cv::WINDOW_NORMAL);
 #endif

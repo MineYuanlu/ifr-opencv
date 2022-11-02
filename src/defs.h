@@ -82,12 +82,17 @@
 
 
 namespace datas {
+    enum FrameType {
+        BayerRG = cv::COLOR_BayerRG2GRAY,
+        BGR = cv::COLOR_BGR2GRAY
+    };
     /**一帧数据*/
     struct FrameData {
         cv::Mat mat;//图像
         uint64_t id;//帧ID (来自相机)
         uint64_t time; //帧时间戳(来自相机)
         int64 receiveTick;// 接收到图像时的tick
+        FrameType type;
     };
     /**目标信息*/
     struct TargetInfo {

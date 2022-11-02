@@ -87,7 +87,7 @@ namespace ifr {
                 fout.close();
             }
 #else
-            std::string file="runtime/plans/" + info.name + ".data";
+            std::string file = "runtime/plans/" + info.name + ".data";
             ifr::Config::mkdir(ifr::Config::getDir(file));
             std::ofstream fout(file, std::ios_base::out | std::ios_base::trunc);
             if (fout.is_open()) {
@@ -186,9 +186,10 @@ namespace ifr {
         ///运行数据, 包括全部流程控制
         namespace RunData {
             const auto delay = SLEEP_TIME(0.1);// 自旋等待间隔
-            std::recursive_mutex mtx;//访问锁
+            std::recursive_mutex state_mtx;//访问锁: 状态相关
+            std::recursive_mutex running_mtx;//访问锁: 运行相关
             std::string currentPlan;//前流程名称
-            int runID;//运行ID, 每次启动任务时改变, 防止不同批次任务混淆
+            std::atomic_int runID;//运行ID, 每次启动任务时改变, 防止不同批次任务混淆
 
             bool running = false;
 
@@ -200,7 +201,7 @@ namespace ifr {
 
             /**@return 当前阶段是否运行完毕*/
             bool isStepFinish() {
-                std::unique_lock<std::recursive_mutex> lock(RunData::mtx);
+                std::unique_lock<std::recursive_mutex> lock(RunData::state_mtx);
                 return waitingTasks.empty();
             }
 
@@ -210,11 +211,11 @@ namespace ifr {
              * @return true = 成功进入下一阶段 (但不代表下一阶段执行完毕)
              */
             bool nextStep() {
-                std::unique_lock<std::recursive_mutex> lock(RunData::mtx);
+                std::unique_lock<std::recursive_mutex> lock(RunData::state_mtx);
                 if (!isStepFinish())return false;
                 waitingTasks = std::set<std::string>(runningTasks.begin(), runningTasks.end());
                 state++;
-                OUTPUT("paln: arrive state " + std::to_string(state))
+                OUTPUT("[Plan] nextStep(): arrive state " + std::to_string(state))
                 return true;
             }
 
@@ -248,16 +249,20 @@ namespace ifr {
              * 停止流程并重置
              */
             void reset() {
-                std::unique_lock<std::recursive_mutex> lock(RunData::mtx);
-                OUTPUT("plan: reset: running=" + std::to_string(running))
+                std::unique_lock<std::recursive_mutex> lock(RunData::running_mtx);
+                OUTPUT("[Plan] reset(): running = " + std::to_string(running))
                 if (!running)return;
 
                 untilStep(4, true);//结束
                 while (!finishingTasks.empty()) SLEEP(delay);
 
+                std::unique_lock<std::recursive_mutex> lock2(RunData::state_mtx);
                 state = 0;
                 runningTasks.clear();
                 waitingTasks.clear();
+                finishingTasks.clear();
+                lock2.unlock();
+
                 running = false;
             }
 
@@ -265,13 +270,15 @@ namespace ifr {
              * 启动流程
              */
             bool start(const std::string &name) {
-                std::unique_lock<std::recursive_mutex> lock(RunData::mtx);
+                std::unique_lock<std::recursive_mutex> lock(RunData::running_mtx);
                 if (running)reset();
                 currentPlan = name;
 
-                const auto rid = ++runID;
+                const int rid = ++runID;
                 const auto plan = plans[name];
                 if (!plan.loaded)return false;
+
+                std::unique_lock<std::recursive_mutex> lock2(RunData::state_mtx);
 
                 int cnt = 0;//任务启动计数
                 for (const auto &ele: plan.tasks) {
@@ -281,23 +288,37 @@ namespace ifr {
                     cnt++;
 
                     std::map<const std::string, TaskIOInfo> io(task.io.begin(), task.io.end());
+                    std::map<const std::string, std::string> args(task.args.begin(), task.args.end());
                     runningTasks.insert(tname);
 
                     const auto regTask = tasks[tname];
-                    std::thread t = std::thread([regTask, rid, tname, io]() {
-                        try {
-                            regTask(io, &state, [rid, tname](const auto finish) {
-                                std::unique_lock<std::recursive_mutex> lock(RunData::mtx);
-                                if (runID != rid || finish != state)return;
+                    std::thread t = std::thread(
+                            [](const auto regTask, const auto rid, const auto tname, auto io, auto args) {
+                                try {
+                                    regTask(io, args, &state, [&rid, &tname](const auto finish) {
+                                        std::unique_lock<std::recursive_mutex> lock(RunData::state_mtx);
+                                        if (runID != rid || finish != state)return;
+                                        waitingTasks.erase(tname);
+                                    });
+                                    std::unique_lock<std::recursive_mutex> lock(RunData::state_mtx);
+                                    if (runID == rid && state == 4)waitingTasks.erase(tname);//可以自动释放最后一步
+                                } catch (PlanError err) {
+                                    OUTPUT("[Plan] PlanError: " + tname + ", " + err.what());
+                                    std::thread t(reset);
+                                    while (!t.joinable());
+                                    t.detach();
+                                } catch (std::exception exception) {
+                                    OUTPUT("[Plan] Error: " + tname + ", " + exception.what());
+                                } catch (...) {
+                                    OUTPUT("[Plan] Error: " + tname);
+                                }
+                                OUTPUT("[Plan] Exit Running: " + tname);
+                                if (runID != rid)return;
+                                std::unique_lock<std::recursive_mutex> lock(RunData::state_mtx);
+                                finishingTasks.erase(tname);
+                                runningTasks.erase(tname);
                                 waitingTasks.erase(tname);
-                            });
-                        } catch (...) {
-                            OUTPUT("[Plan] Runtime error: " + tname);
-                        }
-                        if (runID != rid)return;
-                        std::unique_lock<std::recursive_mutex> lock(RunData::mtx);
-                        finishingTasks.erase(tname);
-                    });
+                            }, regTask, rid, tname, io, args);
                     while (!t.joinable());
                     t.detach();
                 }

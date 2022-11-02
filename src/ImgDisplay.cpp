@@ -7,14 +7,14 @@
 namespace ifr {
 #if DEBUG_IMG
     namespace ImgDisplay {
-        std::mutex mtx;
+        std::mutex state_mtx;
         map<std::string, std::function<cv::Mat()>> datas;
 
         int init() {
             thread t = thread([]() {
                 OUTPUT("画面显示线程 已运行")
                 while (true) {
-                    mtx.lock();
+                    state_mtx.lock();
                     cout << "啊???" << endl;
                     for (const auto &d: datas) {
                         waitKey(30);
@@ -23,7 +23,7 @@ namespace ifr {
                     }
                     cout << "啊???1" << endl;
                     datas.clear();
-                    mtx.unlock();
+                    state_mtx.unlock();
                     waitKey(30);
                 }
             });
@@ -35,9 +35,9 @@ namespace ifr {
 
         void setDisplay(const std::string &name, const std::function<cv::Mat()> &getter) {
             static auto _ = init();
-            mtx.lock();
+            state_mtx.lock();
             datas[name] = getter;
-            mtx.unlock();
+            state_mtx.unlock();
         }
     }
 #endif

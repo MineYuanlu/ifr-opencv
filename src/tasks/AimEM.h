@@ -18,7 +18,6 @@
 #define AIM_TBAR_MAX 10000
 #endif
 
-#define AIM_VALUE_FILE "aim.txt"
 namespace EM {
 
 
@@ -42,20 +41,8 @@ namespace EM {
          */
         datas::OutInfo handle(const datas::TargetInfo info);
 
-        AimEM(bool useForecast);
+        AimEM(bool useForecast, AimOffset offset);
 
-        /**
-         * 保存参数
-         */
-        void saveValue();
-
-        /**
-         * 读取参数
-         */
-        void readValue();
-
-    private:
-        ifr::Config::ConfigController cc;
 
     public:
         /**
@@ -64,15 +51,19 @@ namespace EM {
         static void registerTask() {
             static const std::string io_src = "target";
             static const std::string io_output = "output";
+            static const std::string arg_offx = "offx";
+            static const std::string arg_offy = "offy";
             {
                 ifr::Plans::TaskDescription description{"aim", "能量机关目标瞄准(直接)"};
                 description.io[io_src] = {TYPE_NAME(datas::TargetInfo), "目标信息", true};
                 description.io[io_output] = {TYPE_NAME(datas::OutInfo), "输出数据", false};
+                description.args[arg_offx] = {"偏移量x", "0", ifr::Plans::TaskArgType::NUMBER};
+                description.args[arg_offy] = {"偏移量y", "0", ifr::Plans::TaskArgType::NUMBER};
 
-                ifr::Plans::registerTask("AimEM direct", description, [](auto io, auto state, auto cb) {
+                ifr::Plans::registerTask("AimEM direct", description, [](auto io, auto args, auto state, auto cb) {
                     ifr::Plans::Tools::waitState(state, 1);
 
-                    AimEM *aimEm = new AimEM(false);
+                    AimEM aimEm(false, {stoi(args[arg_offx]), stoi(args[arg_offy])});
                     umt::Subscriber<datas::TargetInfo> tiIn(io[io_src].channel);
                     umt::Publisher<datas::OutInfo> oiOut(io[io_output].channel);
 
@@ -80,25 +71,26 @@ namespace EM {
                     cb(2);
                     while (*state < 3) {
                         try {
-                            oiOut.push(aimEm->handle(tiIn.pop_for(COMMON_LOOP_WAIT)));
+                            oiOut.push(aimEm.handle(tiIn.pop_for(COMMON_LOOP_WAIT)));
                         } catch (umt::MessageError_Timeout) {
                             OUTPUT("[FinderEM] DW 输出数据等待超时 " + std::to_string(COMMON_LOOP_WAIT) + "ms")
                         }
                     }
                     ifr::Plans::Tools::finishAndWait(cb, state, 3);
-                    delete aimEm;
-                    cb(4);
+                    //auto release && cb(4)
                 });
             }
             {
                 ifr::Plans::TaskDescription description{"aim", "能量机关目标瞄准(预测)"};
                 description.io[io_src] = {TYPE_NAME(datas::TargetInfo), "目标信息", true};
                 description.io[io_output] = {TYPE_NAME(datas::OutInfo), "输出数据", false};
+                description.args[arg_offx] = {"偏移量x", "0", ifr::Plans::TaskArgType::NUMBER};
+                description.args[arg_offy] = {"偏移量y", "0", ifr::Plans::TaskArgType::NUMBER};
 
-                ifr::Plans::registerTask("AimEM forecast", description, [](auto io, auto state, auto cb) {
+                ifr::Plans::registerTask("AimEM forecast", description, [](auto io, auto args, auto state, auto cb) {
                     ifr::Plans::Tools::waitState(state, 1);
 
-                    AimEM *aimEm = new AimEM(true);
+                    AimEM aimEm(true, {stoi(args[arg_offx]), stoi(args[arg_offy])});
                     umt::Subscriber<datas::TargetInfo> tiIn(io[io_src].channel);
                     umt::Publisher<datas::OutInfo> oiOut(io[io_output].channel);
 
@@ -106,14 +98,13 @@ namespace EM {
                     cb(2);
                     while (*state < 3) {
                         try {
-                            oiOut.push(aimEm->handle(tiIn.pop_for(COMMON_LOOP_WAIT)));
+                            oiOut.push(aimEm.handle(tiIn.pop_for(COMMON_LOOP_WAIT)));
                         } catch (umt::MessageError_Timeout) {
                             OUTPUT("[FinderEM] DW 输出数据等待超时 " + std::to_string(COMMON_LOOP_WAIT) + "ms")
                         }
                     }
                     ifr::Plans::Tools::finishAndWait(cb, state, 3);
-                    delete aimEm;
-                    cb(4);
+                    //auto release && cb(4)
                 });
             }
         }

@@ -37,6 +37,10 @@ namespace ifr {
 
         Camera(const std::string &outName) : publisher(outName) {}
 
+        ~Camera() {
+            stopCamera();
+        }
+
         /**启动相机*/
         GX_STATUS runCamera();
 
@@ -60,15 +64,22 @@ namespace ifr {
             Plans::TaskDescription description{"input", "相机输入, 负责采集图像"};
             description.io[io_src] = {TYPE_NAME(datas::FrameData), "输出一帧数据", false};
 
-            Plans::registerTask("camera", description, [](auto io, auto state, auto cb) {
+            Plans::registerTask("camera", description, [](auto io, auto args, auto state, auto cb) {
                 Plans::Tools::waitState(state, 1);
-                auto camera = instance = new Camera(io[io_src].channel);
-                if (camera->initCamera() != GX_STATUS_SUCCESS) exit(-1);
+
+                std::unique_ptr<Camera, void (*)(Camera *)> camera(
+                        instance = new Camera(io[io_src].channel),
+                        [](Camera *x) {
+                            delete x;
+                            instance = nullptr;
+                        });
+                if (camera->initCamera() != GX_STATUS_SUCCESS) throw std::runtime_error("Can not init Camera");
                 Plans::Tools::finishAndWait(cb, state, 1);
-                if (camera->runCamera() != GX_STATUS_SUCCESS) exit(-1);
+                if (camera->runCamera() != GX_STATUS_SUCCESS) throw std::runtime_error("Can not run Camera");
                 cb(2);
+                static const auto maxNoInput = 5;//最长无输入秒数
                 static const auto delay = SLEEP_TIME(COMMON_LOOP_WAIT / 1000.0);//延时
-                static const auto maxCnt = int(5 / (COMMON_LOOP_WAIT / 1000.0));//5秒计数
+                static const auto maxCnt = int(maxNoInput / (COMMON_LOOP_WAIT / 1000.0));//5秒计数
                 int count = 0;
                 while (*state < 3) {
                     SLEEP(delay);
@@ -77,15 +88,15 @@ namespace ifr {
                         static auto flag = true;
                         if (!camera->feed_dog.compare_exchange_strong(flag, false)) {
                             OUTPUT("[Camera] Watch dog error: No Input")
-                            exit(-1);
+                            throw std::runtime_error(
+                                    "[Watch dog] Camera No input exceeds " + std::to_string(maxNoInput) +
+                                    " seconds");
                         }
                     }
                 }
-                camera->stopCamera();
                 Plans::Tools::finishAndWait(cb, state, 3);
-                delete camera;
-                instance = nullptr;
-                cb(4);
+                //auto release && cb(4)
+
             });
         }
     };

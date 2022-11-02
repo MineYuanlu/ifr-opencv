@@ -22,7 +22,7 @@ namespace umt {
      */
     class MessageError_Stopped : public MessageError {
     public:
-        MessageError_Stopped() : MessageError("no publisher on this message!") {}
+        MessageError_Stopped() : MessageError("[umt][Stopped] no publisher on this message!") {}
     };
 
     /**
@@ -30,7 +30,7 @@ namespace umt {
      */
     class MessageError_Timeout : public MessageError {
     public:
-        MessageError_Timeout() : MessageError("message read timeout!") {}
+        MessageError_Timeout() : MessageError("[umt][Timeout] message read timeout!") {}
     };
 
     /**
@@ -38,7 +38,7 @@ namespace umt {
      */
     class MessageError_Empty : public MessageError {
     public:
-        MessageError_Empty() : MessageError("empty message. maybe uninitailized or moved!") {}
+        MessageError_Empty() : MessageError("[umt][Empty] empty message. maybe uninitailized or moved!") {}
     };
 
     template<class T>

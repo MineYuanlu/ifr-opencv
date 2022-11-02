@@ -9,10 +9,10 @@
 namespace EM {
 
 
-    void Tools::prepare(const XMat &src, XMat &dist) {
+    void Tools::prepare(const XMat &src, XMat &dist, int type) {
         XMat gray, img1, img2;
 
-        __CV_NAMESPACE cvtColor(src, gray, COLOR_BayerRG2GRAY);//空间转换
+        __CV_NAMESPACE cvtColor(src, gray, type);//空间转换
 
         static const auto blurSize = Size(3, 3);
 #if USE_GPU //平滑图像
@@ -33,11 +33,7 @@ namespace EM {
 #endif
     }
 
-    datas::TargetInfo Finder::run(const Mat &src
-#if DEBUG_TIME
-            , map<string, double> &times
-#endif
-    ) {
+    datas::TargetInfo Finder::run(const Mat &src, int type) {
         DEBUG_nowTime(t_0)
 
         Mat img1;
@@ -46,7 +42,7 @@ namespace EM {
 
         DEBUG_nowTime(t_1)
 
-        Tools::prepare(USE_GPU_SELECT(gpuMat, src), USE_GPU_SELECT(gpuMat, img1));
+        Tools::prepare(USE_GPU_SELECT(gpuMat, src), USE_GPU_SELECT(gpuMat, img1), type);
 
         DEBUG_nowTime(t_2)
 

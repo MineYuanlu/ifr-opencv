@@ -14,6 +14,8 @@
 #include "../Record.h"
 #include "../ImgDisplay.h"
 #include "../DataWaiter.h"
+#include "../semaphore.h"
+
 
 #if USE_GPU
 
@@ -53,10 +55,11 @@ namespace EM {
 
         /**
          * 预处理图像, 原图->亮度的二值图->膨胀
-         * @param src
-         * @param dist
+         * @param src 原图
+         * @param dist 输出图
+         * @param type 原始图像类型 详见 datas::FrameType
          */
-        void prepare(const XMat &src, XMat &dist);
+        void prepare(const XMat &src, XMat &dist, int type);
 
 #if USE_GPU
         /**
@@ -270,25 +273,18 @@ namespace EM {
         /**处理帧率*/
         double fps = 0;
 #endif
-        Assets *assets;
+        shared_ptr<Assets> assets;
         const int thread_id;//处理线程ID
     public:
         /**
          * 运行
          * @param src 原始图像
-         * @param activeCount 激活数量统计
-         * @param nowTarget 当前机关臂位置
-         * @param nowTargetAim 当前装甲板位置
+         * @param type 原始图像类型 详见 datas::FrameType
          */
-
-        datas::TargetInfo run(const Mat &src
-#if DEBUG_TIME
-                , map<string, double> &times
-#endif
-        );
+        datas::TargetInfo run(const Mat &src, int type);
 
 
-        Finder(int id, Assets *assets) : assets(assets), thread_id(id) {
+        Finder(int id, shared_ptr<Assets> assets) : assets(assets), thread_id(id) {
 #if DEBUG_IMG
             namedWindow("finder img " + to_string(id), WINDOW_NORMAL);
             namedWindow("finder src " + to_string(id), WINDOW_NORMAL);
@@ -336,30 +332,32 @@ namespace EM {
             description.io[io_src] = {TYPE_NAME(datas::FrameData), "输入的图像数据", true};
             description.io[io_output] = {TYPE_NAME(datas::TargetInfo), "输出的目标信息", false};
 
-            ifr::Plans::registerTask("FinderEM", description, [](auto io, auto state, auto cb) {
+            ifr::Plans::registerTask("FinderEM", description, [](auto io, auto args, auto state, auto cb) {
                 ifr::Plans::Tools::waitState(state, 1);
 
                 //初始化
-                Assets *_assets = new Assets(); //资源
-                vector<Finder *> finders;     //识别器
+                shared_ptr<Assets> assets_ptr(new Assets());    //资源
+                vector<shared_ptr<Finder>> finders;             //识别器
                 finders.reserve(finder_thread_amount);
-                for (int i = 0; i < finder_thread_amount; ++i)finders.push_back(new Finder(i, _assets));
-                thread *finder_threads = new thread[finder_thread_amount]; //识别线程
+                for (int i = 0; i < finder_thread_amount; ++i)
+                    finders.push_back(shared_ptr<Finder>(new Finder(i, assets_ptr)));
+                unique_ptr<thread[]> finder_threads(new thread[finder_thread_amount]); //识别线程
 
-                ifr::Plans::Tools::finishAndWait(cb, state, 1);
 
                 //运行
                 const auto &cname_src = io[io_src].channel;
                 ifr::DataWaiter<uint64_t, datas::TargetInfo> dw;  //数据整合
 
-                for (const auto &finder: finders) {
+
+                for (const auto &finder: finders) {//识别线程
                     finder_threads[finder->thread_id] = thread([&cname_src, &dw, &finder, &state]() {
                         umt::Subscriber<datas::FrameData> fdIn(cname_src);
+                        ifr::Plans::Tools::waitState(state, 2);
                         while (*state < 3) {
                             try {
                                 const auto data = fdIn.pop_for(COMMON_LOOP_WAIT);
                                 dw.start(data.id);
-                                auto ti = finder->run(data.mat);
+                                auto ti = finder->run(data.mat, data.type);
                                 ti.time = data.time;
                                 ti.receiveTick = data.receiveTick;
                                 dw.finish(data.id, ti);
@@ -374,6 +372,7 @@ namespace EM {
 
 
                 umt::Publisher<datas::TargetInfo> tiOut(io[io_output].channel);//发布者
+                ifr::Plans::Tools::finishAndWait(cb, state, 1);
 
                 cb(2);
                 while (*state < 3) {
@@ -386,11 +385,8 @@ namespace EM {
                 }
                 for (int i = 0; i < finder_thread_amount; ++i)finder_threads[i].join();//等待识别线程退出
                 ifr::Plans::Tools::finishAndWait(cb, state, 3);
-                delete _assets;
-                for (const auto &e: finders)delete e;
-                finders.clear();
-                delete[] finder_threads;
-                cb(4);
+                //auto release && cb(4)
+
             });
         }
     };
