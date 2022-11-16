@@ -6,6 +6,7 @@
 #include "tasks/OutputEM.h"
 #include "tasks/FinderEM.h"
 #include "tasks/Camera.h"
+#include "tasks/FinderArmor.h"
 #include "tasks/Video.h"
 #include "API.h"
 
@@ -38,6 +39,7 @@ int main() {
     ifr::Camera::registerTask();
     EM::Output::registerTask();
     ifr::Video::registerTask();
+    Armor::FinderArmor::registerTask();
 
     ifr::API::init();
 

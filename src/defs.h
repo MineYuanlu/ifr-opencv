@@ -30,7 +30,7 @@
 #define DEBUG_AIM (DEBUG && 0 ) //是否调试瞄准
 
 #if DEBUG_TIME || DEBUG_IMG
-#define DEBUG_nowTime(name) auto name = getTickCount();
+#define DEBUG_nowTime(name) auto name = cv::getTickCount();
 #else
 #define DEBUG_nowTime(name)
 #endif
@@ -94,7 +94,22 @@ namespace datas {
         int64 receiveTick;// 接收到图像时的tick
         FrameType type;
     };
-    /**目标信息*/
+    /**装甲板目标信息*/
+    struct ArmTargetInfo {
+        cv::RotatedRect target;//装甲板位置
+        char type;//类型
+        float angle;//旋转角度(0~180)
+        bool is_large;//是否是大装甲板
+        float bad;//怀分
+    };
+    /**装甲板目标信息*/
+    struct ArmTargetInfos {
+        cv::Size size;//画面大小
+        uint64_t time; //帧时间戳(来自相机)
+        int64 receiveTick;// 接收到图像时的tick
+        std::vector<ArmTargetInfo> targets;//所有装甲板数据
+    };
+    /**能量机关目标信息*/
     struct TargetInfo {
         int activeCount;//激活数量
         bool findTarget;//目标类型 0 :未找到 1:找到但不确定 2: 确定
