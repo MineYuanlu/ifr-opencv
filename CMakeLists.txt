@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 3.5)
 set(PROJECT_NAME IFR_OPENCV)
 #建立项目
 project(${PROJECT_NAME})
-#C++ 14
-set(CMAKE_CXX_STANDARD 14)
+#C++ 17
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "-O2")
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_C_FLAGS -pthread)
@@ -58,6 +58,8 @@ MESSAGE(STATUS "    include path: ${OpenCV_INCLUDE_DIRS}")
 include_directories(lib/UltraMultiThread/include)
 include_directories(lib/basic)
 include_directories(lib)
+include_directories(lib/ifr-modules/lib)
+include_directories(lib/ifr-modules/modules)
 
 
 aux_source_directory(${PROJECT_SOURCE_DIR}/lib/basic LIB_BASIC)
@@ -66,9 +68,12 @@ aux_source_directory(${PROJECT_SOURCE_DIR}/lib/rapidjson LIB_JSON)
 aux_source_directory(${PROJECT_SOURCE_DIR}/lib/predict_needed LIB_PREDICT)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src SRCX)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/tasks SRC_TASK)
+aux_source_directory(${PROJECT_SOURCE_DIR}/lib/ifr-modules LIB_MODULES)
+add_subdirectory(${PROJECT_SOURCE_DIR}/lib/ifr-modules/modules)
 add_executable(${PROJECT_NAME} ${SRCX} ${SRC_TASK} ${LIB_BASIC} ${LIB_WEB} ${LIB_JSON} ${LIB_PREDICT})
 #添加链接库
 
+target_link_libraries(${PROJECT_NAME} common_modules)
 
 if (CMAKE_HOST_SYSTEM_NAME MATCHES "Linux")
     TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${OpenCV_LIBS} gxiapi.so -lpthread -lm)

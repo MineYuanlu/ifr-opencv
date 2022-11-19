@@ -94,8 +94,9 @@ namespace Armor {
      * @param size 输出大小
      * @param angle 装甲板的角度(0~180)
      */
-    void affineTransform(cv::InputArray &src, const cv::RotatedRect &rect, cv::OutputArray &dist,
-                         const cv::Size &size, float angle) {
+    static void
+    affineTransform(cv::InputArray &src, const cv::RotatedRect &rect, cv::OutputArray &dist, const cv::Size &size,
+                    float angle) {
         cv::Point2f srcTri[3], dstTri[3], points[8];
         cv::Mat matrix;
         // src
@@ -116,12 +117,12 @@ namespace Armor {
     namespace NetHelper {
         std::vector<std::string> getOutputsNames(const cv::dnn::Net &net) {
             std::vector<std::string> names;
-            std::vector<int> out_layer_indx = net.getUnconnectedOutLayers();//得到输出层的索引号
+            std::vector<int> out_layer_index = net.getUnconnectedOutLayers();//得到输出层的索引号
             std::vector<std::string> all_layers_names = net.getLayerNames();//得到网络中所有层的名称
 
-            names.resize(out_layer_indx.size());
-            for (int i = 0; i < out_layer_indx.size(); i++)
-                names[i] = all_layers_names[out_layer_indx[i] - 1];
+            names.resize(out_layer_index.size());
+            for (size_t i = 0; i < out_layer_index.size(); i++)
+                names[i] = all_layers_names[out_layer_index[i] - 1];
             return names;
         }
     }
@@ -176,9 +177,11 @@ namespace Armor {
 
 
         cv::cvtColor(src, gray, type);
-        imshow("gray", gray);
-        cv::threshold(gray, b_mat, 100, 255, cv::ThresholdTypes::THRESH_OTSU);
-        imshow("thr", b_mat);
+//        imshow("gray", gray);
+        cv::threshold(gray, b_mat, 100, 255, cv::ThresholdTypes::THRESH_BINARY);
+//        cv::threshold(gray, b_mat, 100, 255, cv::ThresholdTypes::THRESH_OTSU);
+//        imshow("thr", b_mat);
+        DEBUG_nowTime(t_1)
 
         std::vector<std::vector<cv::Point>> contours;  //所有轮廓
         std::vector<cv::Vec4i> hierarchy;         //轮廓关系
@@ -190,7 +193,7 @@ namespace Armor {
         rrs.reserve(contours.size());
         for (const auto &c: contours)rrs.push_back(cv::minAreaRect(c));
 
-        DEBUG_nowTime(t_1)
+        DEBUG_nowTime(t_2)
 
 
         std::vector<size_t> goodIndex;//所有较好的轮廓下标
@@ -203,7 +206,7 @@ namespace Armor {
             if (ar < minAspectRatio || maxAspectRatio < ar)continue;
             goodIndex.push_back(i);
         }
-        DEBUG_nowTime(t_2)
+        DEBUG_nowTime(t_3)
 
         std::vector<ContourPair> goodPair;//所有较好的轮廓对
         goodPair.reserve(rrs.size());
@@ -254,11 +257,11 @@ namespace Armor {
         //TODO 二重循环遍历goodPair, 剔除内部包含其它ContourPair的ContourPair
         std::sort(goodPair.begin(), goodPair.end(), [](const auto &l, const auto &r) { return l.bad < r.bad; });
 
-        DEBUG_nowTime(t_3)
+        DEBUG_nowTime(t_4)
 
-        static auto t = to_string(time(nullptr));
+        static auto t = std::to_string(time(nullptr));
         static int64_t index = 0;
-        auto _index = to_string(++index);
+        auto _index = std::to_string(++index);
         for (size_t i = 0; i < goodPair.size(); i++) {//将所有可能的装甲板做仿射变换提取图像
             const auto &p = goodPair[i];
             const auto &r1 = rrs[p.i1], &r2 = rrs[p.i2];
@@ -278,7 +281,7 @@ namespace Armor {
             targets.push_back({rr, predict(mat, p.is_large), p.angle, p.is_large, p.bad});
 
 //            cv::imwrite("assets\\smat_" + t + "_" + _index + "_" + std::to_string(i) + ".png", mat);
-            cv::imshow("target " + std::to_string(i), mat);
+//            cv::imshow("target " + std::to_string(i), mat);//TODO
 //            predict(mat, p.is_large);
 //            cv::Mat debug_mat = mat.clone();
 //            static const auto dilateKernel = getStructuringElement(0, cv::Size(3, 3));
@@ -289,62 +292,64 @@ namespace Armor {
 //                        0.5, cv::Scalar(255, 0, 100));
 //            cv::imshow("target x " + std::to_string(i), debug_mat);
         }
-        DEBUG_nowTime(t_4)
-
-
-#if DEBUG_IMG || 1
-        {
-            cv::Mat debug_mat = b_mat.clone();
-            c1to3(debug_mat);
-            cv::drawContours(debug_mat, contours, -1, cv::Scalar(0, 255, 0), 2);
-            for (size_t i = 0; i < rrs.size(); i++) {
-                const auto rr = rrs[i];
-                cv::putText(debug_mat,
-                        //                            std::to_string(rr.size.width) + ", " + std::to_string(rr.size.height)
-                        //                            + ", " + std::to_string(std::max(rr.size.height, rr.size.width) /
-                        //                                                    std::min(rr.size.height, rr.size.width))
-                        //                            + " , " + std::to_string(((float) gray.size().area()) / rr.size.area())
-                        //                            + ", " + std::to_string(rr.size.area())
-
-                        //                            std::to_string(getRealAngle(rr))
-                            std::to_string(i)
-                        //
-                        , rrs[i].center, cv::FONT_HERSHEY_COMPLEX, 0.8, cv::Scalar(255, 0, 100));
-                drawRotatedRect(debug_mat, rr, cv::Scalar(255, 100, 0), 2, 16);
-            }
-            for (const auto &t: targets) {
-                drawRotatedRect(debug_mat, t.target, cv::Scalar(100, 50, 100), 2, 16);
-            }
-            cv::imshow("Contours", debug_mat);
-        }
-#endif
+        DEBUG_nowTime(t_5)
 
 
         static std::list<double> all_fps;
         static long double cnt_fps;
 
-        auto fps = 1 / ((t_4 - t_0) / cv::getTickFrequency());
+        auto fps = 1 / ((t_5 - t_0) / cv::getTickFrequency());
         all_fps.push_back(fps), cnt_fps += fps;
         if (all_fps.size() > 10) {
             cnt_fps -= all_fps.front();
             all_fps.pop_front();
         }
-        std::cout << (cnt_fps / all_fps.size()) << " " << fps << ' ' << (t_1 - t_0) << ' ' << (t_2 - t_2) << ' '
-                  << (t_3 - t_2) << ' ' << (t_4 - t_3) << std::endl;
-//
-//        if (goodPair.size() != 1) cv::waitKey(0);
-        cv::waitKey(1);
+
+//        std::cout << (cnt_fps / all_fps.size()) << " " << fps << out_tdiff(t_1, t_0) << out_tdiff(t_2, t_1)
+//                  << out_tdiff(t_3, t_2)
+//                  << out_tdiff(t_4, t_3) << out_tdiff(t_5, t_4) << std::endl;
+
+#if DEBUG_IMG
+        {
+            static const auto delay = cv::getTickFrequency() / 1000.0 * 33;
+            static auto lst = cv::getTickCount();
+            auto now = cv::getTickCount();
+            if ((now - lst) > delay) {
+
+                lst = now;
+
+                cv::Mat img;
+                cv::cvtColor(src, img, cv::COLOR_BayerRG2RGB);
+                cv::Mat channels[3];
+                cv::split(img, channels);
+                for (int i = 0; i < 3; i++)cv::equalizeHist(channels[i], channels[i]);
+                cv::merge(channels, 3, img);
+                cv::drawContours(img, contours, -1, cv::Scalar(0, 255, 0), 2);
+                for (const auto &t: targets) {
+                    cv::putText(img, std::to_string((int) t.type) + " " + std::to_string(t.bad), t.target.center,
+                                cv::FONT_HERSHEY_COMPLEX, 0.8, cv::Scalar(255, 0, 100));
+                    drawRotatedRect(img, t.target, cv::Scalar(100, 50, 100), 2, 16);
+                }
+                cv::putText(img, "fps:" + std::to_string(fps), cv::Size(0, 30),
+                            cv::FONT_HERSHEY_COMPLEX, 0.8, cv::Scalar(255, 0, 100));
+                cv::imshow("view", img);
+                cv::waitKey(1);
+            }
+        }
+#endif
+
+//        cv::waitKey(1);
     }
 
     void FinderArmor::initNet() {
-        net_sm = cv::dnn::readNet(R"(D:\yuanlu\dev\python\py-test\models\model_sm.pb)");
+        net_sm = cv::dnn::readNet(net_sm_path);
         if (net_sm.empty())throw std::runtime_error("load net failed!");
         auto net_sm_outs = NetHelper::getOutputsNames(net_sm);
         if (net_sm_outs.size() != 1)
             throw std::runtime_error("Bad net out amount: " + std::to_string(net_sm_outs.size()) + ", expect 1");
         net_sm_out = net_sm_outs[0];
 
-        net_lg = cv::dnn::readNet(R"(D:\yuanlu\dev\python\py-test\models\model_lg.pb)");
+        net_lg = cv::dnn::readNet(net_lg_path);
         if (net_lg.empty())throw std::runtime_error("load net failed!");
         auto net_lg_outs = NetHelper::getOutputsNames(net_lg);
         if (net_lg_outs.size() != 1)

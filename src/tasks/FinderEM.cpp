@@ -3,8 +3,6 @@
 //
 
 #include "FinderEM.h"
-#include "web/mongoose.h"
-#include "../API.h"
 
 namespace EM {
 
@@ -64,12 +62,12 @@ namespace EM {
         fps = 1 / ((t_5 - t_0) / getTickFrequency());
 #endif
 #if DEBUG_TIME
-        times["总时间"] = (t_end - t_0) / getTickFrequency() * 1000;
-        times["上传"] = (t_1 - t_0) / getTickFrequency() * 1000;
-        times["预处理"] = (t_2 - t_1) / getTickFrequency() * 1000;
-        times["下载"] = (t_3 - t_2) / getTickFrequency() * 1000;
-        times["轮廓"] = (t_4 - t_3) / getTickFrequency() * 1000;
-        times["寻找"] = (t_5 - t_4) / getTickFrequency() * 1000;
+//        times["总时间"] = (t_end - t_0) / getTickFrequency() * 1000;
+//        times["上传"] = (t_1 - t_0) / getTickFrequency() * 1000;
+//        times["预处理"] = (t_2 - t_1) / getTickFrequency() * 1000;
+//        times["下载"] = (t_3 - t_2) / getTickFrequency() * 1000;
+//        times["轮廓"] = (t_4 - t_3) / getTickFrequency() * 1000;
+//        times["寻找"] = (t_5 - t_4) / getTickFrequency() * 1000;
 #endif
 #if DEBUG_IMG
         ifr::ImgDisplay::setDisplay("finder src " + to_string(thread_id), [src]() -> cv::Mat {

@@ -1,29 +1,20 @@
 #include <iostream>
 #include <thread>
 #include "defs.h"
-#include "Record.h"
 #include "tasks/AimEM.h"
 #include "tasks/OutputEM.h"
 #include "tasks/FinderEM.h"
 #include "tasks/Camera.h"
+#include "tasks/AimArmor.h"
 #include "tasks/FinderArmor.h"
 #include "tasks/Video.h"
-#include "API.h"
+#include "api/API.h"
 
 using namespace std;
 using namespace cv;
 
-#if DEBUG_TIME
-void writeTime();
-
-struct TimeInfo {
-    map<string, double> data;
-    uint64_t id;
-};
-#endif
-
-
 int main() {
+//    freopen("ifr-opencv.log", "w", stdout);
     cout << "程序编译时间: " << __DATE__ << " " << __TIME__ << endl;
 #if __OS__ == __OS_Linux__
     system("pwd");
@@ -40,6 +31,7 @@ int main() {
     EM::Output::registerTask();
     ifr::Video::registerTask();
     Armor::FinderArmor::registerTask();
+    Armor::AimArmor::registerTask();
 
     ifr::API::init();
 
@@ -50,26 +42,3 @@ int main() {
     return -1;
 }
 
-ifr::DataWaiter<uint64_t, datas::TargetInfo> dw;
-
-#if DEBUG_TIME
-
-void writeTime() {
-    umt::Subscriber<TimeInfo> sub(MSG_DEBUG_TIME);
-    auto fp = fopen("times.csv", "w");
-    fprintf(fp, "id,type,time\n");
-    while (true) {
-        try {
-            const auto data = sub.pop();
-            for (const auto &e: data.data) {
-                fprintf(fp, "%lu,%s,%f\n", data.id, e.first.c_str(), e.second);
-            }
-            if (data.id > 10000)break;
-        } catch (...) {
-            break;
-        }
-    }
-    fclose(fp);
-}
-
-#endif

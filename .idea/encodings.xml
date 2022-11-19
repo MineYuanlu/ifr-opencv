@@ -7,8 +7,6 @@
     <file url="file://$PROJECT_DIR$/lib/predict_needed/headers/fit_functions.hpp" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/lib/predict_needed/headers/predict_model.hpp" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/lib/predict_needed/predict_model.cpp" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/src/Signal.cpp" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/src/Signal.h" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/tasks/AimEM.cpp" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/tasks/AimEM.h" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/tasks/FinderEM.cpp" charset="UTF-8" />

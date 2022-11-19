@@ -5,15 +5,7 @@
 #include "AimEM.h"
 
 
-#if USE_FORECAST
-
-#include "predict_needed/headers/predict_model.hpp"
-
-#endif
-
 namespace EM {
-
-
     datas::OutInfo AimEM::handle(const datas::TargetInfo info) {
         if (useForecast) {
             static PredictModelDynFit fit;

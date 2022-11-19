@@ -1,8 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="IFR TX (b45ec257-a3ae-4986-bb2b-6e9d100048e1)" remoteFilesAllowedToDisappearOnAutoupload="false" confirmBeforeUploading="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="IFR AGX (a31b29b2-fb7d-4059-9c4f-1d7cd58955f0)" remoteFilesAllowedToDisappearOnAutoupload="false" confirmBeforeUploading="false">
     <option name="confirmBeforeUploading" value="false" />
     <serverData>
+      <paths name="IFR AGX (a31b29b2-fb7d-4059-9c4f-1d7cd58955f0)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="2022-yuanlu" local="$PROJECT_DIR$" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-agx" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-tx1" />
+            <excludedPath local="true" path="$PROJECT_DIR$/.git" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-tx1-" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
       <paths name="IFR TX (b45ec257-a3ae-4986-bb2b-6e9d100048e1)">
         <serverdata>
           <mappings>

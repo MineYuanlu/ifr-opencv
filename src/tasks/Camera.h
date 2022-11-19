@@ -6,15 +6,12 @@
 #define IFR_OPENCV_CAMERA_H
 
 #include "../defs.h"
-#include "../defs.h"
-#include "../Plans.h"
-
-
+#include "plan/Plans.h"
+#include "msg/msg.hpp"
 #include "GxIAPI.h"
 #include "DxImageProc.h"
 #include<opencv2/opencv.hpp>
 #include<iostream>
-#include "umt/umt.hpp"
 #include <functional>
 
 typedef unsigned char BYTE;
@@ -32,7 +29,7 @@ namespace ifr {
         int64_t m_nPayLoadSize = {};         //数据大小
         int64_t m_nPixelColorFilter = {};    //Bayer格式
         int64_t m_nPixelSize = {};           //像素深度
-        umt::Publisher<datas::FrameData> publisher;//发布者
+        ifr::Msg::Publisher<datas::FrameData> publisher;//发布者
         static Camera *instance;
 
         Camera(const std::string &outName) : publisher(outName) {}
@@ -75,6 +72,7 @@ namespace ifr {
                         });
                 if (camera->initCamera() != GX_STATUS_SUCCESS) throw std::runtime_error("Can not init Camera");
                 Plans::Tools::finishAndWait(cb, state, 1);
+                camera->publisher.lock();
                 if (camera->runCamera() != GX_STATUS_SUCCESS) throw std::runtime_error("Can not run Camera");
                 cb(2);
                 static const auto maxNoInput = 5;//最长无输入秒数

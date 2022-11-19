@@ -24,17 +24,17 @@ namespace ifr {
         }
 
         void recorder() {
-            umt::Subscriber<uint64> sub(MSG_CAMERA);
-            while (true) {
-                try {
-                    sub.pop();
-//                    writer.write(Camera::getSrc());
-                }
-                catch (umt::MessageError &e) {
-                    std::cerr << "[WARN] Can not get " << MSG_CAMERA << ": " << e.what() << std::endl;
-                    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                }
-            }
+//            umt::Subscriber<uint64> sub(MSG_CAMERA);
+//            while (true) {
+//                try {
+//                    sub.pop();
+////                    writer.write(Camera::getSrc());
+//                }
+//                catch (umt::MessageError &e) {
+//                    std::cerr << "[WARN] Can not get " << MSG_CAMERA << ": " << e.what() << std::endl;
+//                    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+//                }
+//            }
         }
 
         void startRecord(const std::string &dir) {

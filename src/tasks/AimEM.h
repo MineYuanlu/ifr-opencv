@@ -4,9 +4,11 @@
 
 #include <map>
 #include "../defs.h"
-#include "../Config.h"
-#include "../Plans.h"
+#include "plan/Plans.h"
+#include "msg/msg.hpp"
+#include "config/config.h"
 #include "../ImgDisplay.h"
+#include "predict_needed/headers/predict_model.hpp"
 
 #ifndef IFR_OPENCV_FORECASTEM_H
 #define IFR_OPENCV_FORECASTEM_H
@@ -64,18 +66,24 @@ namespace EM {
                     ifr::Plans::Tools::waitState(state, 1);
 
                     AimEM aimEm(false, {stoi(args[arg_offx]), stoi(args[arg_offy])});
-                    umt::Subscriber<datas::TargetInfo> tiIn(io[io_src].channel);
-                    umt::Publisher<datas::OutInfo> oiOut(io[io_output].channel);
+                    ifr::Msg::Subscriber<datas::TargetInfo> tiIn(io[io_src].channel);
+                    ifr::Msg::Publisher<datas::OutInfo> oiOut(io[io_output].channel);
 
                     ifr::Plans::Tools::finishAndWait(cb, state, 1);
+
+                    oiOut.lock();
+
                     cb(2);
                     while (*state < 3) {
                         try {
                             oiOut.push(aimEm.handle(tiIn.pop_for(COMMON_LOOP_WAIT)));
-                        } catch (umt::MessageError_Timeout) {
-                            OUTPUT("[FinderEM] DW 输出数据等待超时 " + std::to_string(COMMON_LOOP_WAIT) + "ms")
+                        } catch (ifr::Msg::MessageError_NoMsg &) {
+                            OUTPUT("[AimEM] DW 输出数据等待超时 " + std::to_string(COMMON_LOOP_WAIT) + "ms")
+                        } catch (ifr::Msg::MessageError_Broke &) {
+                            break;
                         }
                     }
+                    ifr::Plans::Tools::waitState(state, 3);
                     ifr::Plans::Tools::finishAndWait(cb, state, 3);
                     //auto release && cb(4)
                 });
@@ -91,18 +99,24 @@ namespace EM {
                     ifr::Plans::Tools::waitState(state, 1);
 
                     AimEM aimEm(true, {stoi(args[arg_offx]), stoi(args[arg_offy])});
-                    umt::Subscriber<datas::TargetInfo> tiIn(io[io_src].channel);
-                    umt::Publisher<datas::OutInfo> oiOut(io[io_output].channel);
+                    ifr::Msg::Subscriber<datas::TargetInfo> tiIn(io[io_src].channel);
+                    ifr::Msg::Publisher<datas::OutInfo> oiOut(io[io_output].channel);
 
                     ifr::Plans::Tools::finishAndWait(cb, state, 1);
+
+                    oiOut.lock();
+
                     cb(2);
                     while (*state < 3) {
                         try {
                             oiOut.push(aimEm.handle(tiIn.pop_for(COMMON_LOOP_WAIT)));
-                        } catch (umt::MessageError_Timeout) {
-                            OUTPUT("[FinderEM] DW 输出数据等待超时 " + std::to_string(COMMON_LOOP_WAIT) + "ms")
+                        } catch (ifr::Msg::MessageError_NoMsg &) {
+                            OUTPUT("[AimEM] DW 输出数据等待超时 " + std::to_string(COMMON_LOOP_WAIT) + "ms")
+                        } catch (ifr::Msg::MessageError_Broke &) {
+                            break;
                         }
                     }
+                    ifr::Plans::Tools::waitState(state, 3);
                     ifr::Plans::Tools::finishAndWait(cb, state, 3);
                     //auto release && cb(4)
                 });

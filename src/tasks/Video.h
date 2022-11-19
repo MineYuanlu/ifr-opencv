@@ -6,7 +6,8 @@
 #define IFR_OPENCV_VIDEO_H
 
 #include "../defs.h"
-#include "../Plans.h"
+#include "plan/Plans.h"
+#include "msg/msg.hpp"
 
 namespace ifr {
 
@@ -54,8 +55,9 @@ namespace ifr {
                 Plans::Tools::waitState(state, 1);
 
                 Video video(args[arg_path]);
-                umt::Publisher<datas::FrameData> fdOut(io[io_src].channel);
+                ifr::Msg::Publisher<datas::FrameData> fdOut(io[io_src].channel);
                 Plans::Tools::finishAndWait(cb, state, 1);
+                fdOut.lock();
                 cb(2);
                 const auto delay = SLEEP_TIME(1.0 / video.fps);//延时
                 while (*state < 3) {

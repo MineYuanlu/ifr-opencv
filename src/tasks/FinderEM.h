@@ -8,13 +8,14 @@
 
 #include <iostream>
 #include <opencv2/opencv.hpp>
-#include <opencv2/core.hpp>
 #include <random>
 #include "../defs.h"
 #include "../Record.h"
 #include "../ImgDisplay.h"
-#include "../DataWaiter.h"
 #include "../semaphore.h"
+#include "plan/Plans.h"
+#include "msg/msg.hpp"
+#include "data-waiter/DataWaiter.h"
 
 
 #if USE_GPU
@@ -353,7 +354,7 @@ namespace EM {
 
                 for (const auto &finder: finders) {//识别线程
                     finder_threads[finder->thread_id] = thread([&cname_src, &dw, &finder, &state]() {
-                        umt::Subscriber<datas::FrameData> fdIn(cname_src);
+                        ifr::Msg::Subscriber<datas::FrameData> fdIn(cname_src);
                         ifr::Plans::Tools::waitState(state, 2);
                         while (*state < 3) {
                             try {
@@ -363,9 +364,11 @@ namespace EM {
                                 ti.time = data.time;
                                 ti.receiveTick = data.receiveTick;
                                 dw.finish(data.id, ti);
-                            } catch (umt::MessageError_Timeout &x) {
+                            } catch (ifr::Msg::MessageError_NoMsg &x) {
                                 OUTPUT("[FinderEM] Finder" + to_string(finder->thread_id) + "输出数据等待超时 " +
                                        std::to_string(COMMON_LOOP_WAIT) + "ms")
+                            } catch (ifr::Msg::MessageError_Broke &) {
+                                break;
                             }
                         }
                     });
@@ -373,19 +376,22 @@ namespace EM {
                 }
 
 
-                umt::Publisher<datas::TargetInfo> tiOut(io[io_output].channel);//发布者
+                ifr::Msg::Publisher<datas::TargetInfo> tiOut(io[io_output].channel);//发布者
                 ifr::Plans::Tools::finishAndWait(cb, state, 1);
+
+                tiOut.lock();
 
                 cb(2);
                 while (*state < 3) {
                     try {
                         const auto data = dw.pop_for(COMMON_LOOP_WAIT);
                         tiOut.push(data.second);
-                    } catch (ifr::Timeout) {
+                    } catch (ifr::DataWaiter_Timeout &) {
                         OUTPUT("[FinderEM] DW 输出数据等待超时 " + std::to_string(COMMON_LOOP_WAIT) + "ms")
                     }
                 }
                 for (int i = 0; i < finder_thread_amount; ++i)finder_threads[i].join();//等待识别线程退出
+                ifr::Plans::Tools::waitState(state, 3);
                 ifr::Plans::Tools::finishAndWait(cb, state, 3);
                 //auto release && cb(4)
 

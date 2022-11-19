@@ -13,14 +13,20 @@
  */
 class semaphore {
 public:
-    semaphore(long count = 0) : count(count) {}
+    explicit semaphore(long count = 0) : count(count) {}
 
+    /**
+     * 请求一个资源
+     */
     void wait() {
         std::unique_lock<std::mutex> lock(mx);
         cond.wait(lock, [&]() { return count > 0; });
         --count;
     }
 
+    /**
+     * 释放一个资源
+     */
     void signal() {
         std::unique_lock<std::mutex> lock(mx);
         ++count;

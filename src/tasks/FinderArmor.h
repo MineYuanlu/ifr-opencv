@@ -8,9 +8,12 @@
 #include "../defs.h"
 #include "opencv2/opencv.hpp"
 #include <memory>
-#include<opencv2/dnn.hpp>
-#include "../Plans.h"
-#include "../DataWaiter.h"
+#include <opencv2/dnn.hpp>
+#include <utility>
+#include "plan/Plans.h"
+#include "msg/msg.hpp"
+#include "data-waiter/DataWaiter.h"
+#include "../semaphore.h"
 
 #if USE_GPU
 typedef cv::cuda::GpuMat XMat;
@@ -24,9 +27,11 @@ typedef cv::Mat XMat;
 namespace Armor {
     class FinderArmor {
     private:
+        const std::string net_sm_path;//神经网络文件位置
         cv::dnn::Net net_sm;//图像分类网络
         std::string net_sm_out;//图像分类输出层
 //        mutable std::mutex net_sm_mtx;//网络锁
+        const std::string net_lg_path;//神经网络文件位置
         cv::dnn::Net net_lg;//图像分类网络
         std::string net_lg_out;//图像分类输出层
 //        mutable std::mutex net_lg_mtx;//网络锁
@@ -34,23 +39,18 @@ namespace Armor {
     public:
         const int thread_id;
 
-        explicit FinderArmor(int thread_id) : thread_id(thread_id) {
-#if DEBUG_IMG
-            const int m = 8;
-            const int w = 192 * m, h = 120 * m;
-            cv::namedWindow("gray", cv::WINDOW_NORMAL);
-            cv::resizeWindow("gray", w, h);
-            cv::namedWindow("eqHist", cv::WINDOW_NORMAL);
-            cv::resizeWindow("eqHist", w, h);
-            cv::namedWindow("thr", cv::WINDOW_NORMAL);
-            cv::resizeWindow("thr", w, h);
-            cv::namedWindow("Contours", cv::WINDOW_NORMAL);
-            cv::resizeWindow("Contours", w, h);
-            cv::namedWindow("maybe target", cv::WINDOW_NORMAL);
-          cv::resizeWindow("maybe target", w, h);
-#endif
+        explicit FinderArmor(int thread_id, std::string net_sm_path, std::string net_lg_path) :
+                net_sm_path(std::move(net_sm_path)), net_lg_path(std::move(net_lg_path)), thread_id(thread_id) {
             initNet();
         }
+
+        FinderArmor(const FinderArmor &) = delete;
+
+        FinderArmor(FinderArmor &&obj) = delete;
+
+        FinderArmor &operator=(const FinderArmor &obj) = delete;
+
+        FinderArmor &operator=(FinderArmor &&obj) = delete;
 
         /**
          * 图像处理实际部分
@@ -77,10 +77,14 @@ namespace Armor {
             static const std::string io_src = "src";
             static const std::string io_output = "target";
             static const std::string arg_thread_amount = "thread amount";
+            static const std::string arg_net_sm = "net_sm";
+            static const std::string arg_net_lg = "net_lg";
             ifr::Plans::TaskDescription description{"find", "装甲板识别"};
             description.io[io_src] = {TYPE_NAME(datas::FrameData), "输入的图像数据", true};
             description.io[io_output] = {TYPE_NAME(datas::ArmTargetInfos), "输出的目标信息", false};
             description.args[arg_thread_amount] = {"识别线程数量", "1", ifr::Plans::TaskArgType::NUMBER};
+            description.args[arg_net_sm] = {"神经网络(sm)文件路径", "", ifr::Plans::TaskArgType::STR};
+            description.args[arg_net_lg] = {"神经网络(lg)文件路径", "", ifr::Plans::TaskArgType::STR};
 
             ifr::Plans::registerTask("FinderArmor", description, [](auto io, auto args, auto state, auto cb) {
                 ifr::Plans::Tools::waitState(state, 1);
@@ -91,7 +95,7 @@ namespace Armor {
                 std::vector<std::shared_ptr<FinderArmor>> finders;             //识别器
                 finders.reserve(finder_thread_amount);
                 for (int i = 0; i < finder_thread_amount; ++i)
-                    finders.push_back(std::make_shared<FinderArmor>(i));
+                    finders.push_back(std::make_shared<FinderArmor>(i, args[arg_net_sm], args[arg_net_lg]));
                 std::unique_ptr<std::thread[]> finder_threads(new std::thread[finder_thread_amount]); //识别线程
 
 
@@ -99,10 +103,12 @@ namespace Armor {
                 const auto &cname_src = io[io_src].channel;
                 ifr::DataWaiter<uint64_t, datas::ArmTargetInfos> dw;  //数据整合
 
+                semaphore subWaiter(0);
 
                 for (const auto &finder: finders) {//识别线程
-                    finder_threads[finder->thread_id] = thread([&cname_src, &dw, &finder, &state]() {
-                        umt::Subscriber<datas::FrameData> fdIn(cname_src);
+                    finder_threads[finder->thread_id] = std::thread([&cname_src, &dw, &finder, &state, &subWaiter]() {
+                        ifr::Msg::Subscriber<datas::FrameData> fdIn(cname_src);
+                        subWaiter.signal();
                         ifr::Plans::Tools::waitState(state, 2);
                         while (*state < 3) {
                             try {
@@ -110,34 +116,34 @@ namespace Armor {
                                 dw.start(data.id);
                                 auto ti = finder->run(data);
                                 dw.finish(data.id, ti);
-                            } catch (umt::MessageError_Timeout &x) {
-                                OUTPUT("[FinderArmor] Finder" + to_string(finder->thread_id) + "输出数据等待超时 " +
-                                       std::to_string(COMMON_LOOP_WAIT) + "ms")
+                            } catch (ifr::Msg::MessageError_NoMsg &x) {
+                                OUTPUT("[FinderArmor] Finder" + std::to_string(finder->thread_id) +
+                                       "输出数据等待超时 " + std::to_string(COMMON_LOOP_WAIT) + "ms")
+                            } catch (ifr::Msg::MessageError_Broke &) {
+                                break;
                             }
                         }
                     });
                     while (!finder_threads[finder->thread_id].joinable());
                 }
+                for (int i = 0; i < finder_thread_amount; ++i)subWaiter.wait();
 
-
-                umt::Publisher<datas::ArmTargetInfos> tiOut(io[io_output].channel);//发布者
+                ifr::Msg::Publisher<datas::ArmTargetInfos> tiOut(io[io_output].channel);//发布者
                 ifr::Plans::Tools::finishAndWait(cb, state, 1);
+
+                tiOut.lock();
 
                 cb(2);
                 while (*state < 3) {
                     try {
                         const auto data = dw.pop_for(COMMON_LOOP_WAIT);
-//                        tiOut.push(data.second); TODO
-                        std::cout << "[FinderArmor] result: " << data.first << ' ' << data.second.targets.size()
-                                  << " = ";
-                        for (const auto &x: data.second.targets)
-                            std::cout << '[' << ((int) x.type) << ", " << x.angle << ", " << x.bad << "] ";
-                        std::cout << std::endl;
-                    } catch (ifr::Timeout &) {
+                        tiOut.push(data.second);// TODO
+                    } catch (ifr::DataWaiter_Timeout &) {
                         OUTPUT("[FinderArmor] DW 输出数据等待超时 " + std::to_string(COMMON_LOOP_WAIT) + "ms")
                     }
                 }
                 for (int i = 0; i < finder_thread_amount; ++i)finder_threads[i].join();//等待识别线程退出
+                ifr::Plans::Tools::waitState(state, 3);
                 ifr::Plans::Tools::finishAndWait(cb, state, 3);
                 //auto release && cb(4)
 
