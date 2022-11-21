@@ -32,7 +32,9 @@ namespace ifr {
         ifr::Msg::Publisher<datas::FrameData> publisher;//发布者
         static Camera *instance;
 
-        Camera(const std::string &outName) : publisher(outName) {}
+        const float exposure;
+
+        Camera(const std::string &outName, float exposure) : publisher(outName), exposure(exposure) {}
 
         ~Camera() {
             stopCamera();
@@ -58,14 +60,16 @@ namespace ifr {
          */
         static void registerTask() {
             static const std::string io_src = "src";
+            static const std::string arg_exposure = "exposure";
             Plans::TaskDescription description{"input", "相机输入, 负责采集图像"};
             description.io[io_src] = {TYPE_NAME(datas::FrameData), "输出一帧数据", false};
+            description.args[arg_exposure] = {"曝光时间(ns)", "2000.0000", ifr::Plans::TaskArgType::NUMBER};
 
             Plans::registerTask("camera", description, [](auto io, auto args, auto state, auto cb) {
                 Plans::Tools::waitState(state, 1);
 
                 std::unique_ptr<Camera, void (*)(Camera *)> camera(
-                        instance = new Camera(io[io_src].channel),
+                        instance = new Camera(io[io_src].channel, std::stof(args[arg_exposure])),
                         [](Camera *x) {
                             delete x;
                             instance = nullptr;

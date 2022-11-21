@@ -136,41 +136,44 @@ namespace Armor {
     }
 
     namespace Values {
-        static const float maxSizeRatio = 4000;//最大面积比(画面大小除以轮廓框大小), 超过此值则认为是噪声
-        static const float minSizeRatio = 4;//最小面积比(画面大小除以轮廓框大小), 低于此值则认为非法框
-        static const float maxAspectRatio = 50;//最大长宽比(灯条)
-        static const float minAspectRatio = 2;//最大长宽比(灯条)
-        static const float maxBetweenSizeRatio = 1;//(灯条)轮廓间最大面积比(相除-1取绝对值)
-        static const float maxBetweenWHRatio = 0.5;//(灯条)轮廓间最大长或宽比(相除-1取绝对值)
-        static const float maxAngleDistance = 15;//最大角度差(超过此值则认为两个轮廓不平行)
-        static const float maxAngleMiss = 5;//最大角度差值(灯条中心点连线的角度与灯条角度)
+#define VALUES_PREFIX static const constexpr
+        VALUES_PREFIX float maxSizeRatio = 4000;//最大面积比(画面大小除以轮廓框大小), 超过此值则认为是噪声
+        VALUES_PREFIX float minSizeRatio = 4;//最小面积比(画面大小除以轮廓框大小), 低于此值则认为非法框
+        VALUES_PREFIX float maxAspectRatio = 50;//最大长宽比(灯条)
+        VALUES_PREFIX float minAspectRatio = 2;//最大长宽比(灯条)
+        VALUES_PREFIX float maxBetweenSizeRatio = 1;//(灯条)轮廓间最大面积比(相除-1取绝对值)
+        VALUES_PREFIX float maxBetweenWHRatio = 0.5;//(灯条)轮廓间最大长或宽比(相除-1取绝对值)
+        VALUES_PREFIX float maxAngleDistance = 15;//最大角度差(超过此值则认为两个轮廓不平行)
+        VALUES_PREFIX float maxAngleMiss = 5;//最大角度差值(灯条中心点连线的角度与灯条角度)
 
         static const auto r2d = 45.0 / atan(1.0);//弧度转角度
 
-        static const auto arm_l_h = 53.72F; //装甲板 灯条高度
-        static const auto arm_h = 125.0F;//装甲板高度
-        static const auto arm_sm_w = 135.0F;//小装甲板宽度
-        static const auto arm_lg_w = 230.0F;//大装甲板宽度
-        static const auto arm_min_r = arm_sm_w / (arm_h * 2);//装甲板长宽比最低值
-        static const auto arm_sm_r = arm_sm_w / arm_h;//小装甲板长宽比
-        static const auto arm_lg_r = arm_lg_w / arm_h;//大装甲板长宽比
-        static const auto arm_max_r = (arm_lg_w * 1.5) / arm_h;//装甲板长宽比最高值
-        static const auto arm_middle_r = (arm_sm_r + arm_lg_r) / 2;//大小装甲板长宽比的中间值
+        VALUES_PREFIX auto arm_l_h = 53.72F; //装甲板 灯条高度
+        VALUES_PREFIX auto arm_h = 125.0F;//装甲板高度
+        VALUES_PREFIX auto arm_sm_w = 135.0F;//小装甲板宽度
+        VALUES_PREFIX auto arm_lg_w = 230.0F;//大装甲板宽度
+        VALUES_PREFIX auto arm_min_r = arm_sm_w / (arm_h * 2);//装甲板长宽比最低值
+        VALUES_PREFIX auto arm_sm_r = arm_sm_w / arm_h;//小装甲板长宽比
+        VALUES_PREFIX auto arm_lg_r = arm_lg_w / arm_h;//大装甲板长宽比
+        VALUES_PREFIX auto arm_max_r = (arm_lg_w * 1.5) / arm_h;//装甲板长宽比最高值
+        VALUES_PREFIX auto arm_middle_r = (arm_sm_r + arm_lg_r) / 2;//大小装甲板长宽比的中间值
 
         static const cv::Size arm_to_sm = {64, 64};
         static const cv::Size arm_to_lg = {128, 64};
 
-        static const char arm_sm_ids[] = {1, 2, 3, 4, 9, 10, 11};
-        static const char arm_lg_ids[] = {5, 6, 7, 8, 12};
-        static const int arm_sm_ids_size = sizeof(arm_sm_ids) / sizeof(char);
-        static const int arm_lg_ids_size = sizeof(arm_lg_ids) / sizeof(char);
+        VALUES_PREFIX char arm_sm_ids[] = {1, 2, 3, 4, 9, 10, 11};
+        VALUES_PREFIX char arm_lg_ids[] = {5, 6, 7, 8, 12};
+        VALUES_PREFIX int arm_sm_ids_size = sizeof(arm_sm_ids) / sizeof(char);
+        VALUES_PREFIX int arm_lg_ids_size = sizeof(arm_lg_ids) / sizeof(char);
 
     }
 
 
     void FinderArmor::handler(const cv::Mat &src, int type, std::vector<datas::ArmTargetInfo> &targets) {
         using namespace Values;
-        DEBUG_nowTime(t_0)
+        tw->start(thread_id);
+//        DEBUG_nowTime(t_0)
+        FinderArmor_tw(0);
         static const float src_size = (float) src.size().area();//原始图像的面积大小(预期: 在程序执行期间, 输入大小不会变化)
 
         cv::Mat gray, b_mat;
@@ -178,10 +181,12 @@ namespace Armor {
 
         cv::cvtColor(src, gray, type);
 //        imshow("gray", gray);
+        FinderArmor_tw(1);
         cv::threshold(gray, b_mat, 100, 255, cv::ThresholdTypes::THRESH_BINARY);
 //        cv::threshold(gray, b_mat, 100, 255, cv::ThresholdTypes::THRESH_OTSU);
 //        imshow("thr", b_mat);
-        DEBUG_nowTime(t_1)
+//        DEBUG_nowTime(t_1)
+        FinderArmor_tw(2);
 
         std::vector<std::vector<cv::Point>> contours;  //所有轮廓
         std::vector<cv::Vec4i> hierarchy;         //轮廓关系
@@ -193,7 +198,8 @@ namespace Armor {
         rrs.reserve(contours.size());
         for (const auto &c: contours)rrs.push_back(cv::minAreaRect(c));
 
-        DEBUG_nowTime(t_2)
+//        DEBUG_nowTime(t_2)
+        FinderArmor_tw(3);
 
 
         std::vector<size_t> goodIndex;//所有较好的轮廓下标
@@ -206,7 +212,8 @@ namespace Armor {
             if (ar < minAspectRatio || maxAspectRatio < ar)continue;
             goodIndex.push_back(i);
         }
-        DEBUG_nowTime(t_3)
+//        DEBUG_nowTime(t_3)
+        FinderArmor_tw(4);
 
         std::vector<ContourPair> goodPair;//所有较好的轮廓对
         goodPair.reserve(rrs.size());
@@ -257,7 +264,8 @@ namespace Armor {
         //TODO 二重循环遍历goodPair, 剔除内部包含其它ContourPair的ContourPair
         std::sort(goodPair.begin(), goodPair.end(), [](const auto &l, const auto &r) { return l.bad < r.bad; });
 
-        DEBUG_nowTime(t_4)
+//        DEBUG_nowTime(t_4)
+        FinderArmor_tw(5);
 
         static auto t = std::to_string(time(nullptr));
         static int64_t index = 0;
@@ -292,18 +300,19 @@ namespace Armor {
 //                        0.5, cv::Scalar(255, 0, 100));
 //            cv::imshow("target x " + std::to_string(i), debug_mat);
         }
-        DEBUG_nowTime(t_5)
+//        DEBUG_nowTime(t_5)
+        FinderArmor_tw(6);
 
 
-        static std::list<double> all_fps;
-        static long double cnt_fps;
+//        static std::list<double> all_fps;
+//        static long double cnt_fps;
 
-        auto fps = 1 / ((t_5 - t_0) / cv::getTickFrequency());
-        all_fps.push_back(fps), cnt_fps += fps;
-        if (all_fps.size() > 10) {
-            cnt_fps -= all_fps.front();
-            all_fps.pop_front();
-        }
+//        auto fps = 1 / ((t_5 - t_0) / cv::getTickFrequency());
+//        all_fps.push_back(fps), cnt_fps += fps;
+//        if (all_fps.size() > 10) {
+//            cnt_fps -= all_fps.front();
+//            all_fps.pop_front();
+//        }
 
 //        std::cout << (cnt_fps / all_fps.size()) << " " << fps << out_tdiff(t_1, t_0) << out_tdiff(t_2, t_1)
 //                  << out_tdiff(t_3, t_2)

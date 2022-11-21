@@ -72,7 +72,7 @@ namespace ifr {
         emStatus = GXSetEnum(m_hDevice, GX_ENUM_BALANCE_WHITE_AUTO, GX_BALANCE_WHITE_AUTO_CONTINUOUS);
         //设置自动曝光
         emStatus = GXSetEnum(m_hDevice, GX_ENUM_EXPOSURE_AUTO, GX_EXPOSURE_AUTO_OFF);    //关闭自动曝光
-        emStatus = GXSetFloat(m_hDevice, GX_FLOAT_EXPOSURE_TIME, 2000.0000); //初始曝光时间
+        emStatus = GXSetFloat(m_hDevice, GX_FLOAT_EXPOSURE_TIME, exposure); //初始曝光时间
         //emStatus = GXSetEnum(m_hDevice, GX_ENUM_EXPOSURE_AUTO, GX_EXPOSURE_AUTO_CONTINUOUS);//自动曝光
         //emStatus = GXSetFloat(m_hDevice, GX_FLOAT_AUTO_EXPOSURE_TIME_MIN, 20.0000);//自动曝光最小值
         //emStatus = GXSetFloat(m_hDevice, GX_FLOAT_AUTO_EXPOSURE_TIME_MAX, 100000.0000);//自动曝光最大值

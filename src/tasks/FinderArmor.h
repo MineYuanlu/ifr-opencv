@@ -12,6 +12,7 @@
 #include <utility>
 #include "plan/Plans.h"
 #include "msg/msg.hpp"
+#include "api/API.h"
 #include "data-waiter/DataWaiter.h"
 #include "../semaphore.h"
 
@@ -27,6 +28,7 @@ typedef cv::Mat XMat;
 namespace Armor {
     class FinderArmor {
     private:
+#define FinderArmor_tw(point) tw->setTime(point, thread_id, cv::getTickCount());
         const std::string net_sm_path;//神经网络文件位置
         cv::dnn::Net net_sm;//图像分类网络
         std::string net_sm_out;//图像分类输出层
@@ -37,10 +39,13 @@ namespace Armor {
 //        mutable std::mutex net_lg_mtx;//网络锁
 
     public:
-        const int thread_id;
+        const int thread_id;//线程id (从0开始)
+        const std::shared_ptr<ifr::API::TimeWatcher> tw;
 
-        explicit FinderArmor(int thread_id, std::string net_sm_path, std::string net_lg_path) :
-                net_sm_path(std::move(net_sm_path)), net_lg_path(std::move(net_lg_path)), thread_id(thread_id) {
+        explicit FinderArmor(int thread_id, std::shared_ptr<ifr::API::TimeWatcher> tw,
+                             std::string net_sm_path, std::string net_lg_path) :
+                net_sm_path(std::move(net_sm_path)), net_lg_path(std::move(net_lg_path)), thread_id(thread_id),
+                tw(std::move(tw)) {
             initNet();
         }
 
@@ -91,11 +96,12 @@ namespace Armor {
 
                 const auto finder_thread_amount = stoi(args[arg_thread_amount]);
                 //初始化
-//                shared_ptr<Assets> assets_ptr(new Assets());    //资源
+                auto tw = ifr::API::registerTimePoint("FinderArmor", cv::getTickFrequency() / 1000, 7,
+                                                      finder_thread_amount);
                 std::vector<std::shared_ptr<FinderArmor>> finders;             //识别器
                 finders.reserve(finder_thread_amount);
                 for (int i = 0; i < finder_thread_amount; ++i)
-                    finders.push_back(std::make_shared<FinderArmor>(i, args[arg_net_sm], args[arg_net_lg]));
+                    finders.push_back(std::make_shared<FinderArmor>(i, tw, args[arg_net_sm], args[arg_net_lg]));
                 std::unique_ptr<std::thread[]> finder_threads(new std::thread[finder_thread_amount]); //识别线程
 
 
