@@ -12,7 +12,7 @@ IFR实验室视觉代码框架
 - 串口API
 - [rapidjson](https://github.com/Tencent/rapidjson)
 - [mongoose](https://github.com/cesanta/mongoose)
-- [umt](https://github.com/Harry-hhj/UltraMultiThread)
+- [ifr-modules](https://github.com/mineYuanlu/ifr-modules)
 
 ## FRAME
 
