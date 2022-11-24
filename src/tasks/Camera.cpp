@@ -66,6 +66,19 @@ namespace ifr {
         }
         //打开设备
         emStatus = GXOpenDevice(&openParam, &m_hDevice);
+
+        if (use_trigger) {
+            emStatus = GXSetEnum(m_hDevice, GX_ENUM_TRIGGER_MODE, GX_TRIGGER_MODE_ON);
+            emStatus = GXSetEnum(m_hDevice, GX_ENUM_TRIGGER_SWITCH, GX_TRIGGER_SWITCH_ON);
+            emStatus = GXSetEnum(m_hDevice, GX_ENUM_TRIGGER_SOURCE, GX_TRIGGER_SOURCE_LINE2);
+            emStatus = GXSetEnum(m_hDevice, GX_ENUM_TRIGGER_ACTIVATION, GX_TRIGGER_ACTIVATION_RISINGEDGE);
+            emStatus = GXSetFloat(m_hDevice, GX_FLOAT_TRIGGER_FILTER_RAISING, 0.0f);
+            emStatus = GXSetEnum(m_hDevice, GX_ENUM_TRIGGER_SELECTOR, GX_ENUM_TRIGGER_SELECTOR_FRAME_START);
+        } else {
+            emStatus = GXSetEnum(m_hDevice, GX_ENUM_TRIGGER_SWITCH, GX_TRIGGER_SWITCH_OFF);
+            emStatus = GXSetEnum(m_hDevice, GX_ENUM_TRIGGER_MODE, GX_TRIGGER_MODE_OFF);
+        }
+
         //设置采集模式连续采集
         emStatus = GXSetEnum(m_hDevice, GX_ENUM_ACQUISITION_MODE, GX_ACQ_MODE_CONTINUOUS);
         emStatus = GXSetInt(m_hDevice, GX_INT_ACQUISITION_SPEED_LEVEL, 1);

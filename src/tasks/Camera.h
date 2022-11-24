@@ -32,13 +32,13 @@ namespace ifr {
         ifr::Msg::Publisher<datas::FrameData> publisher;//发布者
         static Camera *instance;
 
-        const float exposure;
+        const float exposure;//曝光时长
+        const bool use_trigger;//是否使用硬触发
 
-        Camera(const std::string &outName, float exposure) : publisher(outName), exposure(exposure) {}
+        Camera(const std::string &outName, float exposure, bool use_trigger) :
+                publisher(outName), exposure(exposure), use_trigger(use_trigger) {}
 
-        ~Camera() {
-            stopCamera();
-        }
+        ~Camera() { stopCamera(); }
 
         /**启动相机*/
         GX_STATUS runCamera();
@@ -61,15 +61,18 @@ namespace ifr {
         static void registerTask() {
             static const std::string io_src = "src";
             static const std::string arg_exposure = "exposure";
+            static const std::string arg_use_trigger = "use_trigger";
             Plans::TaskDescription description{"input", "相机输入, 负责采集图像"};
             description.io[io_src] = {TYPE_NAME(datas::FrameData), "输出一帧数据", false};
             description.args[arg_exposure] = {"曝光时间(ns)", "2000.0000", ifr::Plans::TaskArgType::NUMBER};
+            description.args[arg_use_trigger] = {"使用外触发", "false", ifr::Plans::TaskArgType::BOOL};
 
             Plans::registerTask("camera", description, [](auto io, auto args, auto state, auto cb) {
                 Plans::Tools::waitState(state, 1);
 
                 std::unique_ptr<Camera, void (*)(Camera *)> camera(
-                        instance = new Camera(io[io_src].channel, std::stof(args[arg_exposure])),
+                        instance = new Camera(io[io_src].channel, std::stof(args[arg_exposure]),
+                                              !strcmp("true", args[arg_use_trigger].c_str())),
                         [](Camera *x) {
                             delete x;
                             instance = nullptr;
