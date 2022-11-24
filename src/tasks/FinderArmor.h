@@ -123,8 +123,8 @@ namespace Armor {
                                 auto ti = finder->run(data);
                                 dw.finish(data.id, ti);
                             } catch (ifr::Msg::MessageError_NoMsg &x) {
-                                OUTPUT("[FinderArmor] Finder" + std::to_string(finder->thread_id) +
-                                       "输出数据等待超时 " + std::to_string(COMMON_LOOP_WAIT) + "ms")
+                                ifr::logger::err("FinderArmor", finder->thread_id, "Finder",
+                                                 "数据等待超时:" + std::to_string(COMMON_LOOP_WAIT) + " ms");
                             } catch (ifr::Msg::MessageError_Broke &) {
                                 break;
                             }
@@ -145,7 +145,8 @@ namespace Armor {
                         const auto data = dw.pop_for(COMMON_LOOP_WAIT);
                         tiOut.push(data.second);// TODO
                     } catch (ifr::DataWaiter_Timeout &) {
-                        OUTPUT("[FinderArmor] DW 输出数据等待超时 " + std::to_string(COMMON_LOOP_WAIT) + "ms")
+                        ifr::logger::err("FinderArmor", "DW",
+                                         "数据等待超时:" + std::to_string(COMMON_LOOP_WAIT) + " ms");
                     }
                 }
                 for (int i = 0; i < finder_thread_amount; ++i)finder_threads[i].join();//等待识别线程退出

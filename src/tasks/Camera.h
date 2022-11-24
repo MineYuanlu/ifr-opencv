@@ -89,7 +89,7 @@ namespace ifr {
                         count = 0;
                         static auto flag = true;
                         if (!camera->feed_dog.compare_exchange_strong(flag, false)) {
-                            OUTPUT("[Camera] Watch dog error: No Input")
+                            ifr::logger::err("Camera", "Watch dog error", "No Input");
                             throw std::runtime_error(
                                     "[Watch dog] Camera No input exceeds " + std::to_string(maxNoInput) +
                                     " seconds");

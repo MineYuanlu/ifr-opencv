@@ -66,7 +66,8 @@ namespace Armor {
                         try {
                             oiOut.push(aimArmor.handle(tiIn.pop_for(COMMON_LOOP_WAIT)));
                         } catch (ifr::Msg::MessageError_NoMsg &) {
-                            OUTPUT("[AimArmor] DW 输出数据等待超时 " + std::to_string(COMMON_LOOP_WAIT) + "ms")
+                            ifr::logger::err("AimArmor", "direct",
+                                             "数据等待超时:" + std::to_string(COMMON_LOOP_WAIT) + " ms");
                         } catch (ifr::Msg::MessageError_Broke &) {
                             break;
                         }

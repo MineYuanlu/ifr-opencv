@@ -7,13 +7,6 @@
 
 namespace EM {
 
-#if __OS__ == __OS_Windows__
-    static char port[] = "COM5";
-#elif __OS__ == __OS_Linux__
-    static char port[] = "/dev/ttyTHS2";
-#endif
-
-
     void Output::outputSerialPort(const datas::OutInfo &info) {
         int64 delay = (cv::getTickCount() - info.receiveTick) / cv::getTickFrequency() * 1000;
         port_data_out[1] = info.targetType;
@@ -56,7 +49,7 @@ namespace EM {
         IFR_LOGGER("OutputEM", set_serial_port_attr_read_settings(&attr, 1, 1, 0));
 #endif
         IFR_LOGGER("OutputEM", apply_serial_port_attr(device, &attr, TCSANOW));
-        std::cout << "Serial port turned on successfully: " << device << " - " << std::string(port) << std::endl;
+        ifr::logger::log("OutputEM", "Serial port turned on successfully(" + port + ")", device);
     }
 
     void Output::close() {

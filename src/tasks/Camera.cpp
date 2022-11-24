@@ -39,13 +39,13 @@ namespace ifr {
         //发送开采命令
         GX_STATUS emStatus = GXSendCommand(m_hDevice, GX_COMMAND_ACQUISITION_START);
 
-        OUTPUT("[Camera]" + std::string(emStatus == GX_STATUS_SUCCESS ? "成功" : "无法") + "运行相机")
+        ifr::logger::log("Camera", "Run camera", emStatus == GX_STATUS_SUCCESS ? "success" : "fail");
 
         return emStatus;
     }
 
     GX_STATUS Camera::initCamera() {
-        OUTPUT("[Camera] Start init camera...")
+        ifr::logger::log("Camera", "Start init camera...");
         GX_STATUS emStatus = GX_STATUS_SUCCESS;
         GX_OPEN_PARAM openParam;
         uint32_t nDeviceNum = 0;
@@ -55,13 +55,13 @@ namespace ifr {
         // 初始化库
         emStatus = GXInitLib();
         if (emStatus != GX_STATUS_SUCCESS) {
-            OUTPUT(std::string("[Camera] Init Lib fail: ") + std::to_string(emStatus));
+            ifr::logger::err("Camera", "Init Lib fail", emStatus);
             return emStatus;
         }
         // 枚举设备列表
         emStatus = GXUpdateDeviceList(&nDeviceNum, 1000);
         if ((emStatus != GX_STATUS_SUCCESS) || (nDeviceNum <= 0)) {
-            OUTPUT(std::string("[Camera] Can not found any camera: ") + std::to_string(emStatus));
+            ifr::logger::err("Camera", "Can not found any camera", emStatus);
             return emStatus ? emStatus : GX_STATUS_ERROR;
         }
         //打开设备
@@ -90,7 +90,7 @@ namespace ifr {
         emStatus = GXGetEnum(m_hDevice, GX_ENUM_PIXEL_SIZE, &m_nPixelSize);
         //GXSetFloat(m_hDevice, GX_FLOAT_EXPOSURE_TIME, 20000);
         if (!(m_nImageHeight > 0 && m_nImageWidth > 0)) {
-            OUTPUT(std::string("[Camera] Open camera fail: ") + std::to_string(emStatus));
+            ifr::logger::err("Camera", "Open camera fail", emStatus);
             return GX_STATUS_ERROR;
         }
         //判断相机是否支持bayer格式
@@ -105,13 +105,13 @@ namespace ifr {
         //发送开采命令
         emStatus = GXSendCommand(m_hDevice, GX_COMMAND_ACQUISITION_START);
 
-        OUTPUT("[Camera] Success init")
+        ifr::logger::log("Camera", "Success init");
 
         return GX_STATUS_SUCCESS;
     }
 
     GX_STATUS Camera::stopCamera() {
-        OUTPUT("开始停止相机...")
+        ifr::logger::log("Camera", "Start stop Camera...");
         //发送停采命令
         GX_STATUS emStatus = GXSendCommand(m_hDevice, GX_COMMAND_ACQUISITION_STOP);
         //注销采集回调
@@ -119,7 +119,7 @@ namespace ifr {
 
         emStatus = GXCloseDevice(m_hDevice);
         emStatus = GXCloseLib();
-        OUTPUT("成功停止相机")
+        ifr::logger::log("Camera", "Success stop Camera");
         return emStatus;
     }
 

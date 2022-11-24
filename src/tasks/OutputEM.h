@@ -71,7 +71,8 @@ namespace EM {
                         try {
                             output.outputSerialPort(goIn.pop_for(COMMON_LOOP_WAIT));
                         } catch (ifr::Msg::MessageError_NoMsg &x) {
-                            OUTPUT("[serial port] 输出数据等待超时 " + std::to_string(COMMON_LOOP_WAIT) + "ms")
+                            ifr::logger::err("serial port", "输出数据等待超时",
+                                             std::to_string(COMMON_LOOP_WAIT) + " ms");
                         } catch (ifr::Msg::MessageError_Broke &) {
                             break;
                         }
@@ -95,7 +96,8 @@ namespace EM {
                         try {
                             output.outputConsole(goIn.pop_for(COMMON_LOOP_WAIT));
                         } catch (ifr::Msg::MessageError_NoMsg &x) {
-                            OUTPUT("[console print] 输出数据等待超时 500ms")
+                            ifr::logger::err("console print", "输出数据等待超时",
+                                             std::to_string(COMMON_LOOP_WAIT) + " ms");
                         } catch (ifr::Msg::MessageError_Broke &) {
                             break;
                         }

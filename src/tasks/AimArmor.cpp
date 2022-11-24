@@ -11,6 +11,7 @@ namespace Armor {
 
         if (info.targets.empty())return {0, 0, zero, info.receiveTick};
         else {
+            size = info.size;
             target = info.targets[0].target.center;
             go = cv::Point(size.width / 2, size.height / 2);
             velocity = go - target;

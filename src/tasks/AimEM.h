@@ -78,7 +78,8 @@ namespace EM {
                         try {
                             oiOut.push(aimEm.handle(tiIn.pop_for(COMMON_LOOP_WAIT)));
                         } catch (ifr::Msg::MessageError_NoMsg &) {
-                            OUTPUT("[AimEM] DW 输出数据等待超时 " + std::to_string(COMMON_LOOP_WAIT) + "ms")
+                            ifr::logger::err("AimEM", "direct",
+                                             "数据等待超时:" + std::to_string(COMMON_LOOP_WAIT) + " ms");
                         } catch (ifr::Msg::MessageError_Broke &) {
                             break;
                         }
@@ -111,7 +112,8 @@ namespace EM {
                         try {
                             oiOut.push(aimEm.handle(tiIn.pop_for(COMMON_LOOP_WAIT)));
                         } catch (ifr::Msg::MessageError_NoMsg &) {
-                            OUTPUT("[AimEM] DW 输出数据等待超时 " + std::to_string(COMMON_LOOP_WAIT) + "ms")
+                            ifr::logger::err("AimEM", "forecast",
+                                             "数据等待超时:" + std::to_string(COMMON_LOOP_WAIT) + " ms");
                         } catch (ifr::Msg::MessageError_Broke &) {
                             break;
                         }
