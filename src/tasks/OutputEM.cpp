@@ -10,11 +10,12 @@ namespace EM {
     void Output::outputSerialPort(const datas::OutInfo &info) {
         int64 delay = (cv::getTickCount() - info.receiveTick) / cv::getTickFrequency() * 1000;
         port_data_out[1] = info.targetType;
-        *(short *) (port_data_out + 2) = (short) (-info.velocity.x);
+        *(short *) (port_data_out + 2) = (short) (info.velocity.x);
         *(short *) (port_data_out + 4) = (short) (info.velocity.y);
         *(uint8_t *) (port_data_out + 6) = (uint8_t) delay;
         short sum_check =
-                short(-info.velocity.x) + short(info.velocity.y) +
+                short(info.velocity.x) +
+                short(info.velocity.y) +
                 short(port_data_out[1]) +
                 short(port_data_out[6]);
         *(short *) (port_data_out + 15) = sum_check;

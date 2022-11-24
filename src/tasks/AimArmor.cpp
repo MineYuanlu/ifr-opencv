@@ -14,7 +14,7 @@ namespace Armor {
             size = info.size;
             target = info.targets[0].target.center;
             go = cv::Point(size.width / 2, size.height / 2);
-            velocity = go - target;
+            velocity = target - go;
             return {2, static_cast<int>(info.targets.size()), velocity, info.receiveTick};
         }
     }

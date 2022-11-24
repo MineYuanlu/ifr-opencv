@@ -4,7 +4,7 @@ set(PROJECT_NAME IFR_OPENCV)
 #建立项目
 project(${PROJECT_NAME})
 #C++ 17
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "-O2")
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_C_FLAGS -pthread)
@@ -37,7 +37,7 @@ find_package(CUDA REQUIRED)
 message(STATUS "CUDA version: ${CUDA_VERSION}")
 message(STATUS "    include path: ${CUDA_INCLUDE_DIRS}")
 message(STATUS "    libraries: ${CUDA_LIBRARIES}")
-set(CUDA_NVCC_FLAGS -G;-g;-std=c++14) # nvcc flags
+set(CUDA_NVCC_FLAGS -G;-g;-std=c++${CMAKE_CXX_STANDARD}) # nvcc flags
 include_directories(${CUDA_INCLUDE_DIRS})
 
 #寻找OpenCV库
