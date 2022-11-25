@@ -6,7 +6,7 @@
 
 
 namespace EM {
-    datas::OutInfo AimEM::handle(const datas::TargetInfo info) {
+    datas::OutInfo AimEM::handle(const datas::TargetInfo &info) {
         if (useForecast) {
             static PredictModelDynFit fit;
             fit.get_data(info.emCenter, info.nowTargetAim.center, info.nowTarget.center,

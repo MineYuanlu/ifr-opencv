@@ -41,7 +41,7 @@ namespace EM {
          * @param id 帧ID
          * @param info 目标信息
          */
-        datas::OutInfo handle(const datas::TargetInfo info);
+        datas::OutInfo handle(const datas::TargetInfo &info);
 
         AimEM(bool useForecast, AimOffset offset);
 

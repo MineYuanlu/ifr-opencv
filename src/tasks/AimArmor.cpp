@@ -5,7 +5,7 @@
 #include "AimArmor.h"
 
 namespace Armor {
-    datas::OutInfo AimArmor::handle(const datas::ArmTargetInfos info) {
+    datas::OutInfo AimArmor::handle(const datas::ArmTargetInfos &info) {
         static const cv::Point2f zero(0, 0);
         //TODO useForecast
 

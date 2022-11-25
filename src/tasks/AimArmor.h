@@ -22,7 +22,7 @@ namespace Armor {
         cv::Point2f go;//瞄准位置
         cv::Point2f velocity;//移动矢量
     public:
-        AimArmor(bool useForecast) : useForecast(useForecast) {
+        explicit AimArmor(bool useForecast) : useForecast(useForecast) {
         }
 
         /**
@@ -30,7 +30,7 @@ namespace Armor {
          * @param id 帧ID
          * @param info 目标信息
          */
-        datas::OutInfo handle(const datas::ArmTargetInfos info);
+        datas::OutInfo handle(const datas::ArmTargetInfos &info);
 
     public:
 
