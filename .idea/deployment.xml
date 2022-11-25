@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="IFR AGX (a31b29b2-fb7d-4059-9c4f-1d7cd58955f0)" remoteFilesAllowedToDisappearOnAutoupload="false" confirmBeforeUploading="false">
+  <component name="PublishConfigData" autoUpload="Always" remoteFilesAllowedToDisappearOnAutoupload="false" confirmBeforeUploading="false">
     <option name="confirmBeforeUploading" value="false" />
     <serverData>
       <paths name="IFR AGX (a31b29b2-fb7d-4059-9c4f-1d7cd58955f0)">
@@ -14,6 +14,22 @@
             <excludedPath local="true" path="$PROJECT_DIR$/.git" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-tx1-" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+      <paths name="IFR AGX remote (226363d5-6894-4ff3-8fc6-3076b435a6cc)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="2022-yuanlu" local="$PROJECT_DIR$" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-jyh-nano" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-agx" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-tx1" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-tx1-" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-agx-remote-event-trace" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-" />
           </excludedPaths>
         </serverdata>
