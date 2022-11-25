@@ -19,7 +19,7 @@ int main(int argc, char const *argv[]) {
     bool no_api = false, exit_on_reset = false;
     if (argc > 1) {
         auto args = util::args::argparser("IFR OPENCV");
-        args = args.set_program_name("ifr-opencv")
+        args = args.set_program_name("IFR_OPENCV")
                 .add_help_option()
                 .add_option("-n", "--no-api", "Close api")
                 .add_option<std::string>("-l", "--listen", "Specify the url of API listening", "0.0.0.0:8000")

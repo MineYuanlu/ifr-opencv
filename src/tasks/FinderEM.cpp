@@ -32,35 +32,32 @@ namespace EM {
     }
 
     datas::TargetInfo Finder::run(const Mat &src, int type) {
-        DEBUG_nowTime(t_0)
+        FinderEM_tw(0)
 
         Mat img1;
         USE_GPU_SELECT(cuda::GpuMat gpuMat,);
         USE_GPU_SELECT(gpuMat.upload(src),);
 
-        DEBUG_nowTime(t_1)
+        FinderEM_tw(1)
 
         Tools::prepare(USE_GPU_SELECT(gpuMat, src), USE_GPU_SELECT(gpuMat, img1), type);
 
-        DEBUG_nowTime(t_2)
+        FinderEM_tw(2)
 
         USE_GPU_SELECT(gpuMat.download(img1),);
 
-        DEBUG_nowTime(t_3)
+        FinderEM_tw(3)
         vector<vector<Point>> contours;  //所有轮廓
         vector<Vec4i> hierarchy;         //轮廓关系
 
         findContours(img1, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);  //寻找轮廓
 
-        DEBUG_nowTime(t_4)
+        FinderEM_tw(4)
 
         auto ti = findTargets(USE_GPU_SELECT(gpuMat, img1), contours, hierarchy); //寻找目标
 
-        DEBUG_nowTime(t_5)
+        FinderEM_tw(5)
 
-#if DEBUG_TIME || DEBUG_IMG
-        fps = 1 / ((t_5 - t_0) / getTickFrequency());
-#endif
 #if DEBUG_TIME
 //        times["总时间"] = (t_end - t_0) / getTickFrequency() * 1000;
 //        times["上传"] = (t_1 - t_0) / getTickFrequency() * 1000;
@@ -70,30 +67,30 @@ namespace EM {
 //        times["寻找"] = (t_5 - t_4) / getTickFrequency() * 1000;
 #endif
 #if DEBUG_IMG
-        ifr::ImgDisplay::setDisplay("finder src " + to_string(thread_id), [src]() -> cv::Mat {
-            return src;
-        });
-        ifr::ImgDisplay::setDisplay("finder img " + to_string(thread_id), [this, img1, ti]() -> cv::Mat {
-            auto imgShow = img1.clone();
-            Tools::c1to3(imgShow);
-            putText(imgShow, "fps: " + to_string(fps), Point(0, 50),
-                    FONT_HERSHEY_COMPLEX, 1, Scalar(0, 255, 0));
-            putText(imgShow, "active: " + to_string(ti.activeCount), Point(0, 100),
-                    FONT_HERSHEY_COMPLEX, 1,
-                    Scalar(0, ti.activeCount > 0 ? 255 : 0, ti.activeCount > 0 ? 0 : 255));
-            if (ti.findTarget) {
-                auto size = ti.nowTarget.size;
-                putText(imgShow,
-                        to_string((unsigned long) size.area()) + " " +
-                        to_string(max(size.width / size.height, size.height / size.width)),
-                        ti.nowTarget.center,
-                        FONT_HERSHEY_COMPLEX, 0.8,
-                        Scalar(255, 255, 100));
-            }
-            Tools::drawRotatedRect(imgShow, ti.nowTarget);
-            Tools::drawRotatedRect(imgShow, ti.nowTargetAim);
-            return imgShow;
-        });
+        //        ifr::ImgDisplay::setDisplay("finder src " + to_string(thread_id), [src]() -> cv::Mat {
+        //            return src;
+        //        });
+        //        ifr::ImgDisplay::setDisplay("finder img " + to_string(thread_id), [this, img1, ti]() -> cv::Mat {
+        //            auto imgShow = img1.clone();
+        //            Tools::c1to3(imgShow);
+        //            putText(imgShow, "fps: " + to_string(fps), Point(0, 50),
+        //                    FONT_HERSHEY_COMPLEX, 1, Scalar(0, 255, 0));
+        //            putText(imgShow, "active: " + to_string(ti.activeCount), Point(0, 100),
+        //                    FONT_HERSHEY_COMPLEX, 1,
+        //                    Scalar(0, ti.activeCount > 0 ? 255 : 0, ti.activeCount > 0 ? 0 : 255));
+        //            if (ti.findTarget) {
+        //                auto size = ti.nowTarget.size;
+        //                putText(imgShow,
+        //                        to_string((unsigned long) size.area()) + " " +
+        //                        to_string(max(size.width / size.height, size.height / size.width)),
+        //                        ti.nowTarget.center,
+        //                        FONT_HERSHEY_COMPLEX, 0.8,
+        //                        Scalar(255, 255, 100));
+        //            }
+        //            Tools::drawRotatedRect(imgShow, ti.nowTarget);
+        //            Tools::drawRotatedRect(imgShow, ti.nowTargetAim);
+        //            return imgShow;
+        //        });
 #endif
         ti.size = img1.size();
         return ti;

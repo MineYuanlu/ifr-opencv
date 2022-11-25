@@ -16,6 +16,7 @@
 #include "plan/Plans.h"
 #include "msg/msg.hpp"
 #include "data-waiter/DataWaiter.h"
+#include "api/API.h"
 
 
 #if USE_GPU
@@ -269,13 +270,11 @@ namespace EM {
      * 寻找目标
      */
     class Finder {
+#define FinderEM_tw(point) tw->setTime(point, thread_id, cv::getTickCount());
     public:
-#if DEBUG_TIME || DEBUG_IMG
-        /**处理帧率*/
-        double fps = 0;
-#endif
         shared_ptr<Assets> assets;
         const int thread_id;//处理线程ID
+        const std::shared_ptr<ifr::API::TimeWatcher> tw;
     public:
         /**
          * 运行
@@ -285,7 +284,8 @@ namespace EM {
         datas::TargetInfo run(const Mat &src, int type);
 
 
-        Finder(int id, shared_ptr<Assets> assets) : assets(assets), thread_id(id) {
+        Finder(int id, shared_ptr<Assets> assets, std::shared_ptr<ifr::API::TimeWatcher> tw) :
+                assets(assets), thread_id(id), tw(tw) {
 #if DEBUG_IMG
             namedWindow("finder img " + to_string(id), WINDOW_NORMAL);
             namedWindow("finder src " + to_string(id), WINDOW_NORMAL);
@@ -339,11 +339,13 @@ namespace EM {
 
                 const auto finder_thread_amount = stoi(args[arg_thread_amount]);
                 //初始化
+                auto tw = ifr::API::registerTimePoint("FinderEM", cv::getTickFrequency() / 1000, 6,
+                                                      finder_thread_amount);
                 shared_ptr<Assets> assets_ptr(new Assets());    //资源
                 vector<shared_ptr<Finder>> finders;             //识别器
                 finders.reserve(finder_thread_amount);
                 for (int i = 0; i < finder_thread_amount; ++i)
-                    finders.push_back(shared_ptr<Finder>(new Finder(i, assets_ptr)));
+                    finders.push_back(shared_ptr<Finder>(new Finder(i, assets_ptr, tw)));
                 unique_ptr<thread[]> finder_threads(new thread[finder_thread_amount]); //识别线程
 
 
