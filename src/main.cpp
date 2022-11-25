@@ -43,7 +43,9 @@ int main(int argc, char const *argv[]) {
     if (!err_file.empty()) freopen(err_file.c_str(), "w", stderr);
     if (exit_on_reset) ifr::Plans::setExitOnReset(true);
 
-    cout << "程序编译时间: " << __DATE__ << " " << __TIME__ << endl;
+    cout << "\"main.cpp\" compile time: " << __DATE__ << " " << __TIME__
+         << ", has C++17=" << RAPIDJSON_HAS_CXX17
+         << endl;
 #if __OS__ == __OS_Linux__
     system("pwd");
 #elif __OS__ == __OS_Windows__
