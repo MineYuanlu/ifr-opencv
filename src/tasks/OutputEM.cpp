@@ -28,7 +28,7 @@ namespace EM {
 
     void Output::outputConsole(const datas::OutInfo &info) {
         long double delay = (cv::getTickCount() - info.receiveTick) * 1000.0 / cv::getTickFrequency();
-        printf("T: %d,vec: [%9.3f, %9.3f], a: %d, delay: %.3Lf\n", info.targetType, -info.velocity.x,
+        printf("T: %d,vec: [%9.3f, %9.3f], a: %d, delay: %.3Lf\n", info.targetType, info.velocity.x,
                info.velocity.y, info.activeCount, delay);
     }
 
