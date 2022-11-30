@@ -43,9 +43,12 @@ int main(int argc, char const *argv[]) {
     if (!err_file.empty()) freopen(err_file.c_str(), "w", stderr);
     if (exit_on_reset) ifr::Plans::setExitOnReset(true);
 
-    cout << "\"main.cpp\" compile time: " << __DATE__ << " " << __TIME__
-         << ", has C++17=" << RAPIDJSON_HAS_CXX17
-         << endl;
+
+    cout << __FILE__ << " compile time: " << __DATE__ << " " << __TIME__ << endl;
+    IFR_LOC_LOGGER(RAPIDJSON_HAS_CXX17);
+    IFR_LOC_LOGGER(DEBUG);
+    IFR_LOC_LOGGER(USE_GPU);
+
 #if __OS__ == __OS_Linux__
     system("pwd");
 #elif __OS__ == __OS_Windows__
@@ -54,12 +57,15 @@ int main(int argc, char const *argv[]) {
     UNSUPPORT !!!
     cout<<"未知系统: "<<__OS__<<endl;
 #endif
+    std::cout << std::endl;
+
+
     ifr::Plans::init();
+    ifr::Camera::registerTask();
+    ifr::Video::registerTask();
     EM::Finder::registerTask();
     EM::AimEM::registerTask();
-    ifr::Camera::registerTask();
     EM::Output::registerTask();
-    ifr::Video::registerTask();
     Armor::FinderArmor::registerTask();
     Armor::AimArmor::registerTask();
 

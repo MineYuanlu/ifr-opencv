@@ -172,34 +172,47 @@ namespace Armor {
     void FinderArmor::handler(const cv::Mat &src, int type, std::vector<datas::ArmTargetInfo> &targets) {
         using namespace Values;
         tw->start(thread_id);
-//        DEBUG_nowTime(t_0)
         FinderArmor_tw(0);
+
+
         static const float src_size = (float) src.size().area();//原始图像的面积大小(预期: 在程序执行期间, 输入大小不会变化)
 
         cv::Mat gray, b_mat;
-
-
+#if DEBUG_IMG
+        static const auto imshow_delay = cv::getTickFrequency();
+        static auto imshow_lst = cv::getTickCount();
+        static bool imshow_show = false;
+        auto imshow_now = cv::getTickCount();
+        if ((now - lst) > delay) show = true, lst = now;
+        else show = false;
+#endif
         cv::cvtColor(src, gray, type);
-//        imshow("gray", gray);
+#if DEBUG_IMG
+        if (show) imshow("gray", gray);
+#endif
         FinderArmor_tw(1);
+
+
         cv::threshold(gray, b_mat, 100, 255, cv::ThresholdTypes::THRESH_BINARY);
-//        cv::threshold(gray, b_mat, 100, 255, cv::ThresholdTypes::THRESH_OTSU);
-//        imshow("thr", b_mat);
-//        DEBUG_nowTime(t_1)
+//      cv::threshold(gray, b_mat, 100, 255, cv::ThresholdTypes::THRESH_OTSU);
+#if DEBUG_IMG
+        if (show) imshow("thr", b_mat);
+#endif
         FinderArmor_tw(2);
+
 
         std::vector<std::vector<cv::Point>> contours;  //所有轮廓
         std::vector<cv::Vec4i> hierarchy;         //轮廓关系
         cv::findContours(b_mat, contours, hierarchy, cv::RETR_LIST, cv::CHAIN_APPROX_SIMPLE);\
 
-        if (contours.size() > 10)return;
+        FinderArmor_tw(3);
+
 
         std::vector<cv::RotatedRect> rrs;//所有轮廓的最小包围
         rrs.reserve(contours.size());
         for (const auto &c: contours)rrs.push_back(cv::minAreaRect(c));
 
-//        DEBUG_nowTime(t_2)
-        FinderArmor_tw(3);
+        FinderArmor_tw(4);
 
 
         std::vector<size_t> goodIndex;//所有较好的轮廓下标
@@ -212,8 +225,11 @@ namespace Armor {
             if (ar < minAspectRatio || maxAspectRatio < ar)continue;
             goodIndex.push_back(i);
         }
-//        DEBUG_nowTime(t_3)
-        FinderArmor_tw(4);
+
+        if (goodIndex.size() > 20)return;
+
+        FinderArmor_tw(5);
+
 
         std::vector<ContourPair> goodPair;//所有较好的轮廓对
         goodPair.reserve(rrs.size());
@@ -264,14 +280,14 @@ namespace Armor {
         //TODO 二重循环遍历goodPair, 剔除内部包含其它ContourPair的ContourPair
         std::sort(goodPair.begin(), goodPair.end(), [](const auto &l, const auto &r) { return l.bad < r.bad; });
 
-//        DEBUG_nowTime(t_4)
-        FinderArmor_tw(5);
+        FinderArmor_tw(6);
 
-        static auto t = std::to_string(time(nullptr));
-        static int64_t index = 0;
-        auto _index = std::to_string(++index);
-        for (size_t i = 0; i < goodPair.size(); i++) {//将所有可能的装甲板做仿射变换提取图像
-            const auto &p = goodPair[i];
+
+//        static auto t = std::to_string(time(nullptr));
+//        static int64_t index = 0;
+//        auto _index = std::to_string(++index);
+//        for (size_t i = 0; i < goodPair.size(); i++) {//将所有可能的装甲板做仿射变换提取图像
+        for (auto &p: goodPair) {//将所有可能的装甲板做仿射变换提取图像
             const auto &r1 = rrs[p.i1], &r2 = rrs[p.i2];
             cv::Point2f ps[8];
             r1.points(ps), r2.points(ps + 4);
@@ -300,8 +316,7 @@ namespace Armor {
 //                        0.5, cv::Scalar(255, 0, 100));
 //            cv::imshow("target x " + std::to_string(i), debug_mat);
         }
-//        DEBUG_nowTime(t_5)
-        FinderArmor_tw(6);
+        FinderArmor_tw(7);
 
 
 //        static std::list<double> all_fps;
@@ -319,35 +334,26 @@ namespace Armor {
 //                  << out_tdiff(t_4, t_3) << out_tdiff(t_5, t_4) << std::endl;
 
 #if DEBUG_IMG
-        {
-            static const auto delay = cv::getTickFrequency() / 1000.0 * 33;
-            static auto lst = cv::getTickCount();
-            auto now = cv::getTickCount();
-            if ((now - lst) > delay) {
+        if (show) {
 
-                lst = now;
-
-                cv::Mat img;
-                cv::cvtColor(src, img, cv::COLOR_BayerRG2RGB);
-                cv::Mat channels[3];
-                cv::split(img, channels);
-                for (int i = 0; i < 3; i++)cv::equalizeHist(channels[i], channels[i]);
-                cv::merge(channels, 3, img);
-                cv::drawContours(img, contours, -1, cv::Scalar(0, 255, 0), 2);
-                for (const auto &t: targets) {
-                    cv::putText(img, std::to_string((int) t.type) + " " + std::to_string(t.bad), t.target.center,
-                                cv::FONT_HERSHEY_COMPLEX, 0.8, cv::Scalar(255, 0, 100));
-                    drawRotatedRect(img, t.target, cv::Scalar(100, 50, 100), 2, 16);
-                }
-                cv::putText(img, "fps:" + std::to_string(fps), cv::Size(0, 30),
+            cv::Mat img;
+            cv::cvtColor(src, img, cv::COLOR_BayerRG2RGB);
+            cv::Mat channels[3];
+            cv::split(img, channels);
+            for (int i = 0; i < 3; i++)cv::equalizeHist(channels[i], channels[i]);
+            cv::merge(channels, 3, img);
+            cv::drawContours(img, contours, -1, cv::Scalar(0, 255, 0), 2);
+            for (const auto &t: targets) {
+                cv::putText(img, std::to_string((int) t.type) + " " + std::to_string(t.bad), t.target.center,
                             cv::FONT_HERSHEY_COMPLEX, 0.8, cv::Scalar(255, 0, 100));
-                cv::imshow("view", img);
-                cv::waitKey(1);
+                drawRotatedRect(img, t.target, cv::Scalar(100, 50, 100), 2, 16);
             }
+//                cv::putText(img, "fps:" + std::to_string(fps), cv::Size(0, 30),
+//                            cv::FONT_HERSHEY_COMPLEX, 0.8, cv::Scalar(255, 0, 100));
+            cv::imshow("view", img);
+            cv::waitKey(1);
         }
 #endif
-
-//        cv::waitKey(1);
     }
 
     void FinderArmor::initNet() {
@@ -357,6 +363,7 @@ namespace Armor {
         if (net_sm_outs.size() != 1)
             throw std::runtime_error("Bad net out amount: " + std::to_string(net_sm_outs.size()) + ", expect 1");
         net_sm_out = net_sm_outs[0];
+        IFR_LOC_LOGGER(net_sm_out);
 
         net_lg = cv::dnn::readNet(net_lg_path);
         if (net_lg.empty())throw std::runtime_error("load net failed!");
@@ -364,6 +371,7 @@ namespace Armor {
         if (net_lg_outs.size() != 1)
             throw std::runtime_error("Bad net out amount: " + std::to_string(net_lg_outs.size()) + ", expect 1");
         net_lg_out = net_lg_outs[0];
+        IFR_LOC_LOGGER(net_lg_out);
     }
 
     char FinderArmor::predict(const cv::Mat &mat, bool is_lg) {

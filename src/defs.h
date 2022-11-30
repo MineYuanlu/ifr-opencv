@@ -26,8 +26,9 @@
 #define DEBUG_nowTime(name)
 #endif
 
-
+#ifndef USE_GPU
 #define USE_GPU 0 //是否使用GPU加速计算
+#endif
 
 #if DEBUG
 #define OUTPUT(line) std::cout<<(line)<<std::endl;
