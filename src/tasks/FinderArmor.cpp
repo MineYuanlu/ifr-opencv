@@ -166,7 +166,7 @@ namespace Armor {
         VALUES_PREFIX auto arm_min_r = arm_sm_w / (arm_h * 2);//装甲板长宽比最低值
         VALUES_PREFIX auto arm_sm_r = arm_sm_w / arm_h;//小装甲板长宽比
         VALUES_PREFIX auto arm_lg_r = arm_lg_w / arm_h;//大装甲板长宽比
-        VALUES_PREFIX auto arm_max_r = (arm_lg_w * 1.5) / arm_h;//装甲板长宽比最高值
+        VALUES_PREFIX auto arm_max_r = (arm_lg_w * 1.5F) / arm_h;//装甲板长宽比最高值
         VALUES_PREFIX auto arm_middle_r = (arm_sm_r + arm_lg_r) / 2;//大小装甲板长宽比的中间值
 
         static const cv::Size arm_to_sm = {64, 64};
