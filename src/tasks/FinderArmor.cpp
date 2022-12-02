@@ -136,17 +136,14 @@ namespace Armor {
     }
 
     namespace Values {
-#if IFRAPI_HAS_VARIABLE
-#define IFR_FAV(name, min, max) IFRAPI_VARIABLE(!!(DEBUG),finder-armor,name,min,max);
+#if IFRAPI_HAS_VARIABLE && DEBUG
+#define VALUES_PREFIX static
+#define IFR_FAV(name, min, max) IFRAPI_VARIABLE(finder-armor,name,min,max);
 #else
+#define VALUES_PREFIX static const constexpr
 #define IFR_FAV(name, min, max)
 #endif
 
-#if IFRAPI_HAS_VARIABLE && DEBUG
-#define VALUES_PREFIX static
-#else
-#define VALUES_PREFIX static const constexpr
-#endif
 
         VALUES_PREFIX float maxSizeRatio = 4000;//最大面积比(画面大小除以轮廓框大小), 超过此值则认为是噪声
         VALUES_PREFIX float minSizeRatio = 4;//最小面积比(画面大小除以轮廓框大小), 低于此值则认为非法框
@@ -155,7 +152,7 @@ namespace Armor {
         VALUES_PREFIX float maxBetweenSizeRatio = 1;//(灯条)轮廓间最大面积比(相除-1取绝对值)
         VALUES_PREFIX float maxBetweenWHRatio = 0.5;//(灯条)轮廓间最大长或宽比(相除-1取绝对值)
         VALUES_PREFIX float maxAngleDistance = 15;//最大角度差(超过此值则认为两个轮廓不平行)
-        VALUES_PREFIX float maxAngleMiss = 5;//最大角度差值(灯条中心点连线的角度与灯条角度)
+        VALUES_PREFIX float maxAngleMiss = 12;//最大角度差值(灯条中心点连线的角度与灯条角度)
 
         static const auto r2d = 45.0 / atan(1.0);//弧度转角度
 
@@ -210,7 +207,7 @@ namespace Armor {
 
         cv::Mat gray, b_mat;
 #if DEBUG_IMG_FA
-        static const auto imshow_delay = cv::getTickFrequency() * 0;
+        static const auto imshow_delay = cv::getTickFrequency() * 1;
         static auto imshow_lst = cv::getTickCount();
         static bool imshow_show = false;
         auto imshow_now = cv::getTickCount();
@@ -291,7 +288,8 @@ namespace Armor {
                 if (armor_r < arm_min_r || arm_max_r < armor_r)continue;
 
 
-                const auto link_a = (atan2(link_vec.y, link_vec.x) * r2d);//连线角度
+                auto link_a = (atan2(link_vec.y, link_vec.x) * r2d);//连线角度
+                if (link_a < 0)link_a += 180;
                 const auto miss_a = (float) abs(90 - abs(jra - link_a));//计算的连线角度与真实连线角度的差值
 
 

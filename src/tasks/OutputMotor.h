@@ -90,6 +90,7 @@ namespace Motor {
             {
                 ifr::Plans::TaskDescription description{"output", "通过控制台打印电机数据"};
                 description.io[io_output] = {TYPE_NAME(datas::OutInfo), "输出数据", true};
+                description.args[arg_align_delay] = {"延时对齐(ms)", "5.0", ifr::Plans::TaskArgType::NUMBER};
                 ifr::Plans::registerTask("Motor Print", description, [](auto io, auto args, auto state, auto cb) {
                     ifr::Plans::Tools::waitState(state, 1);
 

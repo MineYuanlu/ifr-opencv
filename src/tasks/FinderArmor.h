@@ -54,7 +54,7 @@ namespace Armor {
             initNet();
 #if DEBUG_IMG_FA
             cv::namedWindow("view", cv::WINDOW_NORMAL);
-            cv::resizeWindow("view", 1920, 12000);
+            cv::resizeWindow("view", 192, 120);
             cv::namedWindow("gray", cv::WINDOW_NORMAL);
             cv::resizeWindow("gray", 192, 120);
             cv::namedWindow("thr", cv::WINDOW_NORMAL);
