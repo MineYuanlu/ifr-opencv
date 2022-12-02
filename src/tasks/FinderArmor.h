@@ -26,6 +26,11 @@ typedef cv::Mat XMat;
 
 
 namespace Armor {
+#define DEBUG_IMG_FA (DEBUG_IMG ||0) //FinderArmor 是否调试显示图像
+
+    namespace Values {
+        void init();
+    }
     class FinderArmor {
     private:
 #define FinderArmor_tw(point) tw->setTime(point, thread_id, cv::getTickCount());
@@ -47,13 +52,21 @@ namespace Armor {
                 net_sm_path(std::move(net_sm_path)), net_lg_path(std::move(net_lg_path)), thread_id(thread_id),
                 tw(std::move(tw)) {
             initNet();
-#if DEBUG_IMG
+#if DEBUG_IMG_FA
             cv::namedWindow("view", cv::WINDOW_NORMAL);
-            cv::resizeWindow("view", 192, 120);
+            cv::resizeWindow("view", 1920, 12000);
             cv::namedWindow("gray", cv::WINDOW_NORMAL);
             cv::resizeWindow("gray", 192, 120);
             cv::namedWindow("thr", cv::WINDOW_NORMAL);
             cv::resizeWindow("thr", 192, 120);
+#endif
+        }
+
+        ~FinderArmor() {
+#if DEBUG_IMG_FA
+            cv::destroyWindow("view");
+            cv::destroyWindow("gray");
+            cv::destroyWindow("thr");
 #endif
         }
 
@@ -104,7 +117,7 @@ namespace Armor {
 
                 const auto finder_thread_amount = stoi(args[arg_thread_amount]);
                 //初始化
-                auto tw = ifr::API::registerTimePoint("FinderArmor", cv::getTickFrequency() / 1000, 7,
+                auto tw = ifr::API::registerTimePoint("FinderArmor", cv::getTickFrequency() / 1000, 8,
                                                       finder_thread_amount);
                 std::vector<std::shared_ptr<FinderArmor>> finders;             //识别器
                 finders.reserve(finder_thread_amount);

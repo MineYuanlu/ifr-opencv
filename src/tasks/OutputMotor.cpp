@@ -2,10 +2,10 @@
 // Created by yuanlu on 2022/9/7.
 //
 
-#include "OutputEM.h"
+#include "OutputMotor.h"
 #include <stdio.h>
 
-namespace EM {
+namespace Motor {
 
     void Output::outputSerialPort(const datas::OutInfo &info) {
         int64 delay = (cv::getTickCount() - info.receiveTick) / cv::getTickFrequency() * 1000;
@@ -26,7 +26,7 @@ namespace EM {
     }
 
 
-    void Output::outputConsole(const datas::OutInfo &info) {
+    void Output::outputConsole(const datas::OutInfo &info) const {
         long double delay = (cv::getTickCount() - info.receiveTick) * 1000.0 / cv::getTickFrequency();
         printf("T: %d,vec: [%9.3f, %9.3f], a: %d, delay: %.3Lf\n", info.targetType, info.velocity.x,
                info.velocity.y, info.activeCount, delay);

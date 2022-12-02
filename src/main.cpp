@@ -2,7 +2,7 @@
 #include <iostream>
 #include <thread>
 #include "tasks/AimEM.h"
-#include "tasks/OutputEM.h"
+#include "tasks/OutputMotor.h"
 #include "tasks/FinderEM.h"
 #include "tasks/Camera.h"
 #include "tasks/AimArmor.h"
@@ -59,15 +59,16 @@ int main(int argc, char const *argv[]) {
 #endif
     std::cout << std::endl;
 
-
     ifr::Plans::init();
     ifr::Camera::registerTask();
     ifr::Video::registerTask();
     EM::Finder::registerTask();
     EM::AimEM::registerTask();
-    EM::Output::registerTask();
+    Motor::Output::registerTask();
     Armor::FinderArmor::registerTask();
     Armor::AimArmor::registerTask();
+
+    Armor::Values::init();
 
     if (!plan.empty()) {
         ifr::logger::log("Main", "Plan to run has been specified", plan);

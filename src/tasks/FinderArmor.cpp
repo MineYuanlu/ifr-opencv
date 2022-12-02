@@ -136,7 +136,18 @@ namespace Armor {
     }
 
     namespace Values {
+#if IFRAPI_HAS_VARIABLE
+#define IFR_FAV(name, min, max) IFRAPI_VARIABLE(!!(DEBUG),finder-armor,name,min,max);
+#else
+#define IFR_FAV(name, min, max)
+#endif
+
+#if IFRAPI_HAS_VARIABLE && DEBUG
+#define VALUES_PREFIX static
+#else
 #define VALUES_PREFIX static const constexpr
+#endif
+
         VALUES_PREFIX float maxSizeRatio = 4000;//最大面积比(画面大小除以轮廓框大小), 超过此值则认为是噪声
         VALUES_PREFIX float minSizeRatio = 4;//最小面积比(画面大小除以轮廓框大小), 低于此值则认为非法框
         VALUES_PREFIX float maxAspectRatio = 50;//最大长宽比(灯条)
@@ -161,11 +172,31 @@ namespace Armor {
         static const cv::Size arm_to_sm = {64, 64};
         static const cv::Size arm_to_lg = {128, 64};
 
-        VALUES_PREFIX char arm_sm_ids[] = {1, 2, 3, 4, 9, 10, 11};
-        VALUES_PREFIX char arm_lg_ids[] = {5, 6, 7, 8, 12};
-        VALUES_PREFIX int arm_sm_ids_size = sizeof(arm_sm_ids) / sizeof(char);
-        VALUES_PREFIX int arm_lg_ids_size = sizeof(arm_lg_ids) / sizeof(char);
+        static const constexpr char arm_sm_ids[] = {1, 2, 3, 4, 9, 10, 11};
+        static const constexpr char arm_lg_ids[] = {5, 6, 7, 8, 12};
+        static const constexpr int arm_sm_ids_size = sizeof(arm_sm_ids) / sizeof(char);
+        static const constexpr int arm_lg_ids_size = sizeof(arm_lg_ids) / sizeof(char);
 
+        void init() {
+            IFR_FAV(maxSizeRatio, 1, 100000)
+            IFR_FAV(minSizeRatio, 1, 100000)
+            IFR_FAV(maxAspectRatio, 1, 100)
+            IFR_FAV(minAspectRatio, 1, 100)
+            IFR_FAV(maxBetweenSizeRatio, 0, 100)
+            IFR_FAV(maxBetweenWHRatio, 0, 100)
+            IFR_FAV(maxAngleDistance, 0, 360)
+            IFR_FAV(maxAngleMiss, 0, 360)
+
+            IFR_FAV(arm_l_h, 0, 500)
+            IFR_FAV(arm_h, 0, 500)
+            IFR_FAV(arm_sm_w, 0, 500)
+            IFR_FAV(arm_lg_w, 0, 500)
+            IFR_FAV(arm_min_r, -5, 5)
+            IFR_FAV(arm_sm_r, -5, 5)
+            IFR_FAV(arm_lg_r, -5, 5)
+            IFR_FAV(arm_max_r, -5, 5)
+            IFR_FAV(arm_middle_r, -5, 5)
+        }
     }
 
 
@@ -178,25 +209,25 @@ namespace Armor {
         static const float src_size = (float) src.size().area();//原始图像的面积大小(预期: 在程序执行期间, 输入大小不会变化)
 
         cv::Mat gray, b_mat;
-#if DEBUG_IMG
-        static const auto imshow_delay = cv::getTickFrequency();
+#if DEBUG_IMG_FA
+        static const auto imshow_delay = cv::getTickFrequency() * 0;
         static auto imshow_lst = cv::getTickCount();
         static bool imshow_show = false;
         auto imshow_now = cv::getTickCount();
-        if ((now - lst) > delay) show = true, lst = now;
-        else show = false;
+        if ((imshow_now - imshow_lst) > imshow_delay) imshow_show = true, imshow_lst = imshow_now;
+        else imshow_show = false;
 #endif
         cv::cvtColor(src, gray, type);
-#if DEBUG_IMG
-        if (show) imshow("gray", gray);
+#if DEBUG_IMG_FA && 0
+        if (imshow_show) imshow("gray", gray);
 #endif
         FinderArmor_tw(1);
 
 
         cv::threshold(gray, b_mat, 100, 255, cv::ThresholdTypes::THRESH_BINARY);
 //      cv::threshold(gray, b_mat, 100, 255, cv::ThresholdTypes::THRESH_OTSU);
-#if DEBUG_IMG
-        if (show) imshow("thr", b_mat);
+#if DEBUG_IMG_FA && 0
+        if (imshow_show) imshow("thr", b_mat);
 #endif
         FinderArmor_tw(2);
 
@@ -333,8 +364,8 @@ namespace Armor {
 //                  << out_tdiff(t_3, t_2)
 //                  << out_tdiff(t_4, t_3) << out_tdiff(t_5, t_4) << std::endl;
 
-#if DEBUG_IMG
-        if (show) {
+#if DEBUG_IMG_FA
+        if (imshow_show) {
 
             cv::Mat img;
             cv::cvtColor(src, img, cv::COLOR_BayerRG2RGB);
@@ -343,16 +374,17 @@ namespace Armor {
             for (int i = 0; i < 3; i++)cv::equalizeHist(channels[i], channels[i]);
             cv::merge(channels, 3, img);
             cv::drawContours(img, contours, -1, cv::Scalar(0, 255, 0), 2);
-            for (const auto &t: targets) {
-                cv::putText(img, std::to_string((int) t.type) + " " + std::to_string(t.bad), t.target.center,
-                            cv::FONT_HERSHEY_COMPLEX, 0.8, cv::Scalar(255, 0, 100));
-                drawRotatedRect(img, t.target, cv::Scalar(100, 50, 100), 2, 16);
+            for (size_t i = 0; i < targets.size(); i++) {
+                const auto &t = targets[i];
+                cv::putText(img, std::to_string((int)i)+" "+std::to_string((int) t.type) + " " + std::to_string(t.bad),
+                            t.target.center, cv::FONT_HERSHEY_COMPLEX, 0.8, cv::Scalar(255, 0, 100));
+                drawRotatedRect(img, t.target, i ? cv::Scalar(100, 50, 100) : cv::Scalar(0, 255, 0), 5, 16);
             }
 //                cv::putText(img, "fps:" + std::to_string(fps), cv::Size(0, 30),
 //                            cv::FONT_HERSHEY_COMPLEX, 0.8, cv::Scalar(255, 0, 100));
             cv::imshow("view", img);
-            cv::waitKey(1);
         }
+        if (imshow_show)cv::waitKey(1);
 #endif
     }
 
