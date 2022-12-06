@@ -474,3 +474,5 @@ FodyWeavers.xsd
 
 
 .idea
+!/docs/
+!/docs/arm/

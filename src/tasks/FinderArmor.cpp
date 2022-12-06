@@ -174,6 +174,8 @@ namespace Armor {
         static const constexpr int arm_sm_ids_size = sizeof(arm_sm_ids) / sizeof(char);
         static const constexpr int arm_lg_ids_size = sizeof(arm_lg_ids) / sizeof(char);
 
+        VALUES_PREFIX auto model_threshold = 0.9F; // 模型结果阈值
+
         void init() {
             IFR_FAV(maxSizeRatio, 1, 100000)
             IFR_FAV(minSizeRatio, 1, 100000)
@@ -193,6 +195,8 @@ namespace Armor {
             IFR_FAV(arm_lg_r, -5, 5)
             IFR_FAV(arm_max_r, -5, 5)
             IFR_FAV(arm_middle_r, -5, 5)
+
+            IFR_FAV(model_threshold, 0, 1)
         }
     }
 
@@ -331,7 +335,11 @@ namespace Armor {
 //            cv::imshow("target t " + std::to_string(i), mat);
             cv::threshold(mat, mat, 0, 255, cv::THRESH_OTSU);
 
-            targets.push_back({rr, predict(mat, p.is_large), p.angle, p.is_large, p.bad});
+            auto result_type = predict(mat, p.is_large);
+
+            if (result_type == 0)continue;
+
+            targets.push_back({rr, result_type, p.angle, p.is_large, p.bad});
 
 //            cv::imwrite("assets\\smat_" + t + "_" + _index + "_" + std::to_string(i) + ".png", mat);
 //            cv::imshow("target " + std::to_string(i), mat);//TODO
@@ -416,15 +424,15 @@ namespace Armor {
             out = (is_lg ? net_lg : net_sm).forward((is_lg ? net_lg_out : net_sm_out));
         }
 
-        int max = 0;
-        float max_v = out.at<float>(max);
+        int max = 0;//最大置信度对应的结果
+        float max_v = out.at<float>(max);//最大置信度
 
         for (int i = 1, l = is_lg ? arm_lg_ids_size : arm_sm_ids_size; i < l; i++) {
             auto v = out.at<float>(i);
             if (v > max_v)max = i, max_v = v;
         }
-
-        return (is_lg ? arm_lg_ids : arm_sm_ids)[max];
+        if (max_v < model_threshold)return 0;
+        else return (is_lg ? arm_lg_ids : arm_sm_ids)[max];
     }
 
 }
