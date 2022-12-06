@@ -27,6 +27,10 @@ typedef cv::Mat XMat;
 
 namespace Armor {
 #define DEBUG_IMG_FA (DEBUG_IMG ||0) //FinderArmor 是否调试显示图像
+#if DEBUG_IMG_FA
+#define DEBUG_IMG_FA_R 0.1
+#define DEBUG_IMG_FA_WH (1280 * DEBUG_IMG_FA_R), (1024 * DEBUG_IMG_FA_R)
+#endif
 
     namespace Values {
         void init();
@@ -42,7 +46,9 @@ namespace Armor {
         cv::dnn::Net net_lg;//图像分类网络
         std::string net_lg_out;//图像分类输出层
 //        mutable std::mutex net_lg_mtx;//网络锁
-
+#if DEBUG_IMG_FA
+        cv::VideoWriter *writer = nullptr;
+#endif
     public:
         const int thread_id;//线程id (从0开始)
         const std::shared_ptr<ifr::API::TimeWatcher> tw;
@@ -54,11 +60,11 @@ namespace Armor {
             initNet();
 #if DEBUG_IMG_FA
             cv::namedWindow("view", cv::WINDOW_NORMAL);
-            cv::resizeWindow("view", 192, 120);
+            cv::resizeWindow("view", DEBUG_IMG_FA_WH);
             cv::namedWindow("gray", cv::WINDOW_NORMAL);
-            cv::resizeWindow("gray", 192, 120);
+            cv::resizeWindow("gray", DEBUG_IMG_FA_WH);
             cv::namedWindow("thr", cv::WINDOW_NORMAL);
-            cv::resizeWindow("thr", 192, 120);
+            cv::resizeWindow("thr", DEBUG_IMG_FA_WH);
 #endif
         }
 
@@ -67,6 +73,11 @@ namespace Armor {
             cv::destroyWindow("view");
             cv::destroyWindow("gray");
             cv::destroyWindow("thr");
+
+            if (writer != nullptr) {
+                writer->release();
+                delete writer;
+            }
 #endif
         }
 

@@ -145,7 +145,7 @@ namespace Armor {
 #endif
 
 
-        VALUES_PREFIX float maxSizeRatio = 4000;//最大面积比(画面大小除以轮廓框大小), 超过此值则认为是噪声
+        VALUES_PREFIX float maxSizeRatio = 3000;//最大面积比(画面大小除以轮廓框大小), 超过此值则认为是噪声
         VALUES_PREFIX float minSizeRatio = 4;//最小面积比(画面大小除以轮廓框大小), 低于此值则认为非法框
         VALUES_PREFIX float maxAspectRatio = 50;//最大长宽比(灯条)
         VALUES_PREFIX float minAspectRatio = 2;//最大长宽比(灯条)
@@ -203,6 +203,24 @@ namespace Armor {
 
     void FinderArmor::handler(const cv::Mat &src, int type, std::vector<datas::ArmTargetInfo> &targets) {
         using namespace Values;
+
+
+#if DEBUG_IMG_FA
+        static const auto imshow_delay = cv::getTickFrequency() * 1;
+        static auto imshow_lst = cv::getTickCount();
+        static bool imshow_show = false;
+        const auto imshow_now = cv::getTickCount();
+        if ((imshow_now - imshow_lst) > imshow_delay) imshow_show = true, imshow_lst = imshow_now;
+        else imshow_show = false;
+
+        if (writer == nullptr) {
+            writer = new cv::VideoWriter("output.avi", cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 20.0,
+                                         src.size());
+            ifr::logger::log("FindArmor", "Record", writer->isOpened());
+        }
+
+#endif
+
         tw->start(thread_id);
         FinderArmor_tw(0);
 
@@ -210,14 +228,6 @@ namespace Armor {
         static const float src_size = (float) src.size().area();//原始图像的面积大小(预期: 在程序执行期间, 输入大小不会变化)
 
         cv::Mat gray, b_mat;
-#if DEBUG_IMG_FA
-        static const auto imshow_delay = cv::getTickFrequency() * 1;
-        static auto imshow_lst = cv::getTickCount();
-        static bool imshow_show = false;
-        auto imshow_now = cv::getTickCount();
-        if ((imshow_now - imshow_lst) > imshow_delay) imshow_show = true, imshow_lst = imshow_now;
-        else imshow_show = false;
-#endif
         cv::cvtColor(src, gray, type);
 #if DEBUG_IMG_FA && 0
         if (imshow_show) imshow("gray", gray);
@@ -319,6 +329,11 @@ namespace Armor {
 //        static auto t = std::to_string(time(nullptr));
 //        static int64_t index = 0;
 //        auto _index = std::to_string(++index);
+
+#if DEBUG_IMG_FA
+        std::vector<datas::ArmTargetInfo> bad_targets;
+#endif
+
 //        for (size_t i = 0; i < goodPair.size(); i++) {//将所有可能的装甲板做仿射变换提取图像
         for (auto &p: goodPair) {//将所有可能的装甲板做仿射变换提取图像
             const auto &r1 = rrs[p.i1], &r2 = rrs[p.i2];
@@ -337,9 +352,12 @@ namespace Armor {
 
             auto result_type = predict(mat, p.is_large);
 
-            if (result_type == 0)continue;
-
-            targets.push_back({rr, result_type, p.angle, p.is_large, p.bad});
+            if (result_type != 0)
+                targets.push_back({rr, result_type, p.angle, p.is_large, p.bad});
+#if DEBUG_IMG_FA
+            else
+                bad_targets.push_back({rr, result_type, p.angle, p.is_large, p.bad});
+#endif
 
 //            cv::imwrite("assets\\smat_" + t + "_" + _index + "_" + std::to_string(i) + ".png", mat);
 //            cv::imshow("target " + std::to_string(i), mat);//TODO
@@ -372,23 +390,38 @@ namespace Armor {
 
 #if DEBUG_IMG_FA
         if (imshow_show) {
+            DEBUG_nowTime(t_end);
+            auto fps = 1 / ((t_end - imshow_now) / cv::getTickFrequency());
 
-            cv::Mat img;
-            cv::cvtColor(src, img, cv::COLOR_BayerRG2RGB);
-            cv::Mat channels[3];
-            cv::split(img, channels);
-            for (int i = 0; i < 3; i++)cv::equalizeHist(channels[i], channels[i]);
-            cv::merge(channels, 3, img);
+            cv::Mat img = gray.clone();
+//            if (type == datas::FrameType::BGR) {
+//                cv::cvtColor(src, img, cv::COLOR_BGR2RGB);
+//            } else if (type == datas::FrameType::BayerRG) {
+//                cv::cvtColor(src, img, cv::COLOR_BayerRG2RGB);
+//            } else throw std::runtime_error("[FinderArmor] Bad src type: " + std::to_string(type));
+            c1to3(img);
+//            cv::Mat channels[3];
+//            cv::split(img, channels);
+//            for (int i = 0; i < 3; i++)cv::equalizeHist(channels[i], channels[i]);
+//            cv::merge(channels, 3, img);
             cv::drawContours(img, contours, -1, cv::Scalar(0, 255, 0), 2);
             for (size_t i = 0; i < targets.size(); i++) {
                 const auto &t = targets[i];
-                cv::putText(img, std::to_string((int)i)+" "+std::to_string((int) t.type) + " " + std::to_string(t.bad),
-                            t.target.center, cv::FONT_HERSHEY_COMPLEX, 0.8, cv::Scalar(255, 0, 100));
-                drawRotatedRect(img, t.target, i ? cv::Scalar(100, 50, 100) : cv::Scalar(0, 255, 0), 5, 16);
+                cv::putText(img,
+                            std::to_string((int) i) + " " + std::to_string((int) t.type) + " " + std::to_string(t.bad),
+                            t.target.center, cv::FONT_HERSHEY_COMPLEX, 0.8, cv::Scalar(255, 0, 255));
+                drawRotatedRect(img, t.target, cv::Scalar(0, 255, 0), 5, 16);
             }
-//                cv::putText(img, "fps:" + std::to_string(fps), cv::Size(0, 30),
-//                            cv::FONT_HERSHEY_COMPLEX, 0.8, cv::Scalar(255, 0, 100));
-            cv::imshow("view", img);
+            for (size_t i = 0; i < bad_targets.size(); i++) {
+                const auto &t = bad_targets[i];
+                cv::putText(img, std::to_string((int) i) + " " + std::to_string(t.bad),
+                            t.target.center, cv::FONT_HERSHEY_COMPLEX, 0.8, cv::Scalar(255, 0, 0));
+                drawRotatedRect(img, t.target, cv::Scalar(0, 0, 255), 5, 16);
+            }
+            cv::putText(img, "fps:" + std::to_string(fps), cv::Size(0, 30),
+                        cv::FONT_HERSHEY_COMPLEX, 0.8, cv::Scalar(255, 0, 100));
+//            cv::imshow("view", img);
+            writer->write(img);
         }
         if (imshow_show)cv::waitKey(1);
 #endif
