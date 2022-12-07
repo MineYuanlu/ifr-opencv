@@ -16,6 +16,7 @@ namespace Armor {
         bool is_large;//是否是大装甲板
         float bad;//坏分, 越大代表越不可能是装甲板
 
+        bool skip;//是否要跳过(内部包含其它轮廓对)
         cv::RotatedRect rr;//最小包围矩形
     };
 
@@ -63,7 +64,7 @@ namespace Armor {
 
 
     FORCE_INLINE void
-    drawRotatedRect(cv::Mat &mask, const cv::RotatedRect &rr, const cv::Scalar &color, int thickness = 1,
+    drawRotatedRect(const cv::Mat &mask, const cv::RotatedRect &rr, const cv::Scalar &color, int thickness = 1,
                     int lineType = cv::LineTypes::LINE_8) {
         cv::Point2f ps[4];
         rr.points(ps);
@@ -76,7 +77,7 @@ namespace Armor {
 
     template<typename T, size_t n>
     FORCE_INLINE void
-    drawRotatedRect(cv::Mat &mask, const datas::Polygon<T, n> &poly, const cv::Scalar &color, int thickness = 1,
+    drawRotatedRect(const cv::Mat &mask, const datas::Polygon<T, n> &poly, const cv::Scalar &color, int thickness = 1,
                     int lineType = cv::LineTypes::LINE_8) {
         std::vector<std::vector<cv::Point>> tmpContours;
         std::vector<cv::Point> contours;
@@ -172,7 +173,7 @@ namespace Armor {
     FORCE_INLINE cv::RotatedRect
     getInnerRR(
 #if DEBUG_VIDEO_FA || DEBUG_IMG_FA
-            cv::Mat &mat,
+            const cv::Mat &mat,
 #endif
             const cv::RotatedRect &r1, const cv::RotatedRect &r2, float set_height) {
         cv::Point2f ps[8];
@@ -263,6 +264,8 @@ namespace Armor {
 
         VALUES_PREFIX auto model_threshold = 0.9F; // 模型结果阈值
 
+        VALUES_PREFIX int debug_show_extra = 1;//调试: 是否展示额外数据
+
         void init() {
             IFR_FAV(maxSizeRatio, 1, 100000)
             IFR_FAV(minSizeRatio, 1, 100000)
@@ -284,6 +287,8 @@ namespace Armor {
             IFR_FAV(arm_middle_r, -5, 5)
 
             IFR_FAV(model_threshold, 0, 1)
+
+            IFR_FAV(debug_show_extra, 0, 1)
         }
     }
 
@@ -337,7 +342,7 @@ namespace Armor {
 #if DEBUG_IMG_FA || DEBUG_VIDEO_FA
 
         if (imshow_show) {
-#if  1 //使用灰度图 or 彩色图
+#if  0 //使用灰度图 or 彩色图
             imshow_mat_view = gray.clone();
             c1to3(imshow_mat_view);
 #else
@@ -449,9 +454,10 @@ namespace Armor {
 
         for (auto &p: goodPair) {//计算好对的包围矩形
             const auto &r1 = rrs[p.i1], &r2 = rrs[p.i2];
+            p.skip = false;
             p.rr = getInnerRR(
 #if DEBUG_IMG_FA || DEBUG_VIDEO_FA
-                    imshow_mat_view,
+                    debug_show_extra ? imshow_mat_view : cv::Mat(),
 #endif
                     r1, r2, p.h);//装甲板 包围
         }
@@ -460,7 +466,26 @@ namespace Armor {
         FinderArmor_tw(7);
 
 
+        for (auto &p: goodPair) {
+            if (p.skip)continue;
+            cv::Point2f ps[4];
+            p.rr.points(ps);
+            std::vector<cv::Point2f> points(ps, ps + 4);
+            for (auto &sub: goodPair) {
+                if (cv::pointPolygonTest(points, rrs[sub.i1].center, false) >= 0 ||
+                    cv::pointPolygonTest(points, rrs[sub.i2].center, false) >= 0) {
+                    p.skip = true;
+                    break;
+                }
+            }
+        }
+
+
+        FinderArmor_tw(8);
+
+
         for (auto &p: goodPair) {//将所有可能的装甲板做仿射变换提取图像
+            if (p.skip)continue;
             cv::Mat mat;
             affineTransform(gray, p.rr, mat, p.is_large ? arm_to_lg : arm_to_sm, p.angle);
 //            cv::equalizeHist(mat, mat);
@@ -476,7 +501,7 @@ namespace Armor {
                 bad_targets.push_back({p.rr, result_type, p.angle, p.is_large, p.bad});
 #endif
         }
-        FinderArmor_tw(8);
+        FinderArmor_tw(9);
 
 #if DEBUG_IMG_FA || DEBUG_VIDEO_FA
         if (imshow_show) {
@@ -492,18 +517,17 @@ namespace Armor {
             //所有轮廓
             cv::drawContours(imshow_mat_view, contours, -1, color_all_c, 2);
             for (const auto &index: goodIndex)
-                cv::drawContours(imshow_mat_view, contours, index, color_good_c, 2);
-            for (size_t i = 0; i < targets.size(); i++) {
-                const auto &t = targets[i];
+                cv::drawContours(imshow_mat_view, contours, static_cast<int>(index), color_good_c, 2);
+            for (auto &t: targets) {
                 cv::putText(imshow_mat_view,
                             std::to_string((int) t.type),
                             t.target.center, cv::FONT_HERSHEY_COMPLEX, 0.8, color_target);
                 drawRotatedRect(imshow_mat_view, t.target, color_target, 5, 16);
             }
-            for (size_t i = 0; i < bad_targets.size(); i++) {
-                const auto &t = bad_targets[i];
-                drawRotatedRect(imshow_mat_view, t.target, color_bad_target, 5, 16);
-            }
+            if (debug_show_extra)
+                for (auto &t: bad_targets) {
+                    drawRotatedRect(imshow_mat_view, t.target, color_bad_target, 5, 16);
+                }
             cv::putText(imshow_mat_view,
                         "fps:" + std::to_string((int) fps)
                         + ", good: " + std::to_string(goodIndex.size())
@@ -519,7 +543,7 @@ namespace Armor {
             if (key == 32) {//空格
                 static const auto ti = std::to_string(time(nullptr));
                 static int frame_id = 0;
-                auto frame_id_str = std::to_string(frame_id);
+                auto frame_id_str = std::to_string(frame_id++);
                 int id = 0;
                 for (const auto &t: targets) {
                     cv::Mat mat;

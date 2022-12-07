@@ -131,7 +131,7 @@ namespace Armor {
 
                 const auto finder_thread_amount = stoi(args[arg_thread_amount]);
                 //初始化
-                auto tw = ifr::API::registerTimePoint("FinderArmor", cv::getTickFrequency() / 1000, 9,
+                auto tw = ifr::API::registerTimePoint("FinderArmor", cv::getTickFrequency() / 1000, 10,
                                                       finder_thread_amount);
                 std::vector<std::shared_ptr<FinderArmor>> finders;             //识别器
                 finders.reserve(finder_thread_amount);
