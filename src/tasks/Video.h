@@ -56,7 +56,7 @@ namespace ifr {
             description.io[io_src] = {TYPE_NAME(datas::FrameData), "输出一帧数据", false};
             description.args[arg_path] = {"视频文件的路径", "", ifr::Plans::TaskArgType::STR};
             description.args[arg_loop] = {"循环播放", "false", ifr::Plans::TaskArgType::BOOL};
-            description.args[arg_delay] = {"帧延时", "false", ifr::Plans::TaskArgType::BOOL};
+            description.args[arg_delay] = {"帧延时(-1关闭, 0自动计算, 其它为ms)", "0", ifr::Plans::TaskArgType::NUMBER};
 
             ifr::Plans::registerTask("video", description, [](auto io, auto args, auto state, auto cb) {
                 Plans::Tools::waitState(state, 1);
@@ -66,7 +66,9 @@ namespace ifr {
                 Plans::Tools::finishAndWait(cb, state, 1);
                 fdOut.lock();
                 cb(2);
-                const auto delay = strcmp("true", args[arg_delay].c_str()) ? 0 : SLEEP_TIME(1.0 / video.fps);//延时
+
+                const auto delay_0 = stoi(args[arg_delay]);
+                const auto delay = delay_0 < 0 ? 0 : SLEEP_TIME(delay_0 ? (delay_0 / 1000.0) : (1.0 / video.fps));//延时
                 while (*state < 3) {
                     if (delay) SLEEP(delay);
                     cv::Mat mat;

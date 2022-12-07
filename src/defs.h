@@ -50,6 +50,32 @@
 
 
 namespace datas {
+    /**
+     * 一个多边形
+     * @tparam TP 点数据类型
+     * @tparam n 点数量
+     * */
+    template<typename TP, size_t n>
+    struct Polygon {
+        typedef cv::Point_<TP> Point;
+        Point points[n];
+
+        Polygon() = default;
+
+        template<size_t len>
+        Polygon(const Point (&ps)[len]) {
+            static_assert(len >= n);
+            for (size_t i = 0; i < n; i++)points[i] = ps[i];
+        }
+
+        inline Point center() const {
+            Point center(0, 0);
+            for (const auto &p: points)center += p;
+            center /= static_cast<int>(n);
+            return center;
+        }
+    };
+
     enum FrameType {
         BayerRG = cv::COLOR_BayerRG2GRAY,
         BGR = cv::COLOR_BGR2GRAY

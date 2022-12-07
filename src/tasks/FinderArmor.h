@@ -26,7 +26,8 @@ typedef cv::Mat XMat;
 
 
 namespace Armor {
-#define DEBUG_IMG_FA (DEBUG_IMG ||0) //FinderArmor 是否调试显示图像
+#define DEBUG_IMG_FA (DEBUG_IMG ||1) //FinderArmor 是否调试显示图像
+#define DEBUG_VIDEO_FA (DEBUG_IMG ||0) //FinderArmor 是否调试记录video
 #if DEBUG_IMG_FA
 #define DEBUG_IMG_FA_R 0.1
 #define DEBUG_IMG_FA_WH (1280 * DEBUG_IMG_FA_R), (1024 * DEBUG_IMG_FA_R)
@@ -46,7 +47,7 @@ namespace Armor {
         cv::dnn::Net net_lg;//图像分类网络
         std::string net_lg_out;//图像分类输出层
 //        mutable std::mutex net_lg_mtx;//网络锁
-#if DEBUG_IMG_FA
+#if DEBUG_VIDEO_FA
         cv::VideoWriter *writer = nullptr;
 #endif
     public:
@@ -74,6 +75,8 @@ namespace Armor {
             cv::destroyWindow("gray");
             cv::destroyWindow("thr");
 
+#endif
+#if DEBUG_VIDEO_FA
             if (writer != nullptr) {
                 writer->release();
                 delete writer;
@@ -128,7 +131,7 @@ namespace Armor {
 
                 const auto finder_thread_amount = stoi(args[arg_thread_amount]);
                 //初始化
-                auto tw = ifr::API::registerTimePoint("FinderArmor", cv::getTickFrequency() / 1000, 8,
+                auto tw = ifr::API::registerTimePoint("FinderArmor", cv::getTickFrequency() / 1000, 9,
                                                       finder_thread_amount);
                 std::vector<std::shared_ptr<FinderArmor>> finders;             //识别器
                 finders.reserve(finder_thread_amount);

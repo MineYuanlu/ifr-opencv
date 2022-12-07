@@ -8,6 +8,7 @@
 #include "tasks/AimArmor.h"
 #include "tasks/FinderArmor.h"
 #include "tasks/Video.h"
+#include "tasks/Picture.h"
 #include "api/API.h"
 #include "argparse.hpp"
 
@@ -27,6 +28,12 @@ int main(int argc, char const *argv[]) {
                 .add_option("-e", "--exit-on-reset", "Exit the program when the process is reset")
                 .add_option<std::string>("", "--file-log", "Log output file", "")
                 .add_option<std::string>("", "--file-err", "Err output file", "")
+                .add_sc_option("-s", "--show-plans", "Show the list of all plans", []() {
+                    ifr::Plans::init();
+                    for (const auto &plan: ifr::Plans::getPlanList()) {
+                        std::cout << plan << std::endl;
+                    }
+                })
                 .add_sc_option("-h", "--help-show", "show this help message", [&args]() {
                     args.print_help();
                 })
@@ -62,6 +69,7 @@ int main(int argc, char const *argv[]) {
     ifr::Plans::init();
     ifr::Camera::registerTask();
     ifr::Video::registerTask();
+    ifr::Picture::registerTask();
     EM::Finder::registerTask();
     EM::AimEM::registerTask();
     Motor::Output::registerTask();

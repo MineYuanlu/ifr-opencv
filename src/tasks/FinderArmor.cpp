@@ -15,6 +15,8 @@ namespace Armor {
         float angle;//装甲板旋转角度(0~180)
         bool is_large;//是否是大装甲板
         float bad;//坏分, 越大代表越不可能是装甲板
+
+        cv::RotatedRect rr;//最小包围矩形
     };
 
     /**单通道转3通道*/
@@ -46,9 +48,23 @@ namespace Armor {
         return 90 - abs(abs(f1 - f2) - 90);
     }
 
+    /**
+     * 计算两点距离
+     * @tparam Tp 数值类型
+     * @param l 点1
+     * @param r 点2
+     * @return 距离
+     */
+    template<typename Tp>
+    FORCE_INLINE Tp distanceSquare(const cv::Point_<Tp> &l, const cv::Point_<Tp> &r) {
+        const auto v = l - r;
+        return v.dot(v);
+    }
 
-    FORCE_INLINE void drawRotatedRect(cv::Mat &mask, const cv::RotatedRect &rr, const cv::Scalar &color, int thickness,
-                                      int lineType) {
+
+    FORCE_INLINE void
+    drawRotatedRect(cv::Mat &mask, const cv::RotatedRect &rr, const cv::Scalar &color, int thickness = 1,
+                    int lineType = cv::LineTypes::LINE_8) {
         cv::Point2f ps[4];
         rr.points(ps);
         std::vector<std::vector<cv::Point>> tmpContours;
@@ -58,6 +74,16 @@ namespace Armor {
         drawContours(mask, tmpContours, 0, color, thickness, lineType);
     }
 
+    template<typename T, size_t n>
+    FORCE_INLINE void
+    drawRotatedRect(cv::Mat &mask, const datas::Polygon<T, n> &poly, const cv::Scalar &color, int thickness = 1,
+                    int lineType = cv::LineTypes::LINE_8) {
+        std::vector<std::vector<cv::Point>> tmpContours;
+        std::vector<cv::Point> contours;
+        for (const auto &p: poly.points) { contours.emplace_back(cv::Point2i(p)); }
+        tmpContours.insert(tmpContours.end(), contours);
+        drawContours(mask, tmpContours, 0, color, thickness, lineType);
+    }
 
 
     /**
@@ -114,6 +140,68 @@ namespace Armor {
         __CV_NAMESPACE warpAffine(src, dist, matrix, size);
     }
 
+    /**
+     * 获取灯条一侧的中心点
+     * @param light 灯条旋转矩形
+     * @param ps 灯条角点
+     * @param center 装甲板中心点
+     * @return 灯条靠近装甲板一侧的中心点
+     */
+    FORCE_INLINE cv::Point2f
+    getLightSideCenter(const cv::RotatedRect &light, const cv::Point2f *const ps, const cv::Point2f &center) {
+        size_t min_i = 0;//最近点下标
+        auto min_d = distanceSquare(center, ps[min_i]);//最近点距离平方
+        for (size_t i = 1; i < 4; i++) {
+            const auto d = distanceSquare(center, ps[i]);
+            if (d < min_d)min_d = d, min_i = i;
+        }
+        if (light.size.width < light.size.height) {
+            if (min_i == 0 || min_i == 1)return (ps[0] + ps[1]) / 2;
+            else return (ps[2] + ps[3]) / 2;
+        } else {
+            if (min_i == 1 || min_i == 2)return (ps[1] + ps[2]) / 2;
+            else return (ps[0] + ps[3]) / 2;
+        }
+    }
+    /**
+     * 获取两个旋转矩形的内部矩形
+     * @param r1 rr1
+     * @param r2 rr2
+     * @return 包围2个旋转矩形内部区域的旋转矩形
+     */
+    FORCE_INLINE cv::RotatedRect
+    getInnerRR(
+#if DEBUG_VIDEO_FA || DEBUG_IMG_FA
+            cv::Mat &mat,
+#endif
+            const cv::RotatedRect &r1, const cv::RotatedRect &r2, float set_height) {
+        cv::Point2f ps[8];
+        r1.points(ps), r2.points(ps + 4);
+        //找出最小的四个点
+        cv::Point2f center(0, 0);
+        for (const auto &point: ps) center += point;
+        center /= 8;
+
+        ps[0] = getLightSideCenter(r1, ps, center);
+        ps[1] = getLightSideCenter(r2, ps + 4, center);
+
+#if DEBUG_VIDEO_FA || DEBUG_IMG_FA
+        if (!mat.empty()) {
+            cv::line(mat, ps[0], ps[1], cv::Scalar(255, 100, 255), 3);
+            drawRotatedRect(mat, r1, cv::Scalar(255, 100, 100), 3);
+            drawRotatedRect(mat, r2, cv::Scalar(255, 100, 100), 3);
+            cv::circle(mat, center, 1, cv::Scalar(100, 255, 100), 3);
+        }
+#endif
+        auto rr = cv::minAreaRect(std::vector<cv::Point2f>(ps, ps + 2));//装甲板 包围
+        if (rr.size.height < rr.size.width) {//将高度设为装甲板的高度(原高度为0), 缩小宽度(减少两侧灯条)
+            rr.size.height = set_height;
+        } else {
+            rr.size.width = set_height;
+        }
+        return rr;
+    }
+
     namespace NetHelper {
         std::vector<std::string> getOutputsNames(const cv::dnn::Net &net) {
             std::vector<std::string> names;
@@ -131,7 +219,6 @@ namespace Armor {
     datas::ArmTargetInfos FinderArmor::run(const datas::FrameData &data) {
         datas::ArmTargetInfos infos = {data.mat.size(), data.time, data.receiveTick};
         handler(data.mat, data.type, infos.targets);
-        cv::waitKey(1);
         return infos;
     }
 
@@ -145,14 +232,14 @@ namespace Armor {
 #endif
 
 
-        VALUES_PREFIX float maxSizeRatio = 3000;//最大面积比(画面大小除以轮廓框大小), 超过此值则认为是噪声
+        VALUES_PREFIX float maxSizeRatio = 5000;//最大面积比(画面大小除以轮廓框大小), 超过此值则认为是噪声
         VALUES_PREFIX float minSizeRatio = 4;//最小面积比(画面大小除以轮廓框大小), 低于此值则认为非法框
         VALUES_PREFIX float maxAspectRatio = 50;//最大长宽比(灯条)
-        VALUES_PREFIX float minAspectRatio = 2;//最大长宽比(灯条)
-        VALUES_PREFIX float maxBetweenSizeRatio = 1;//(灯条)轮廓间最大面积比(相除-1取绝对值)
-        VALUES_PREFIX float maxBetweenWHRatio = 0.5;//(灯条)轮廓间最大长或宽比(相除-1取绝对值)
+        VALUES_PREFIX float minAspectRatio = 2;//最小长宽比(灯条)
+        VALUES_PREFIX float maxBetweenSizeRatio = 6;//(灯条)轮廓间最大面积比(相除-1取绝对值)
+        VALUES_PREFIX float maxBetweenWHRatio = 4;//(灯条)轮廓间最大长或宽比(相除-1取绝对值)
         VALUES_PREFIX float maxAngleDistance = 15;//最大角度差(超过此值则认为两个轮廓不平行)
-        VALUES_PREFIX float maxAngleMiss = 12;//最大角度差值(灯条中心点连线的角度与灯条角度)
+        VALUES_PREFIX float maxAngleMiss = 15;//最大角度差值(灯条中心点连线的角度与灯条角度)
 
         static const auto r2d = 45.0 / atan(1.0);//弧度转角度
 
@@ -160,7 +247,7 @@ namespace Armor {
         VALUES_PREFIX auto arm_h = 125.0F;//装甲板高度
         VALUES_PREFIX auto arm_sm_w = 135.0F;//小装甲板宽度
         VALUES_PREFIX auto arm_lg_w = 230.0F;//大装甲板宽度
-        VALUES_PREFIX auto arm_min_r = arm_sm_w / (arm_h * 2);//装甲板长宽比最低值
+        VALUES_PREFIX auto arm_min_r = arm_sm_w / (arm_h * 4);//装甲板长宽比最低值
         VALUES_PREFIX auto arm_sm_r = arm_sm_w / arm_h;//小装甲板长宽比
         VALUES_PREFIX auto arm_lg_r = arm_lg_w / arm_h;//大装甲板长宽比
         VALUES_PREFIX auto arm_max_r = (arm_lg_w * 1.5F) / arm_h;//装甲板长宽比最高值
@@ -205,20 +292,23 @@ namespace Armor {
         using namespace Values;
 
 
-#if DEBUG_IMG_FA
-        static const auto imshow_delay = cv::getTickFrequency() * 1;
-        static auto imshow_lst = cv::getTickCount();
-        static bool imshow_show = false;
-        const auto imshow_now = cv::getTickCount();
-        if ((imshow_now - imshow_lst) > imshow_delay) imshow_show = true, imshow_lst = imshow_now;
-        else imshow_show = false;
+#if DEBUG_IMG_FA || DEBUG_VIDEO_FA
+        static const auto imshow_delay = cv::getTickFrequency() * 0.1;//两次显示间隔
+        static auto imshow_lst = cv::getTickCount();//上一次更新值
+        bool imshow_show = false;//本次是否展示
+        const auto imshow_now = cv::getTickCount();//当前值
+        if (static_cast<decltype(imshow_delay)>((imshow_now - imshow_lst)) > imshow_delay)
+            imshow_show = true, imshow_lst = imshow_now;
 
+        cv::Mat imshow_mat_view;//调试图像
+
+#if DEBUG_VIDEO_FA
         if (writer == nullptr) {
-            writer = new cv::VideoWriter("output.avi", cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 20.0,
-                                         src.size());
+            writer = new cv::VideoWriter("output.avi", cv::VideoWriter::fourcc('M', 'J', 'P', 'G'),
+                                         100.0, src.size());
             ifr::logger::log("FindArmor", "Record", writer->isOpened());
         }
-
+#endif
 #endif
 
         tw->start(thread_id);
@@ -229,6 +319,7 @@ namespace Armor {
 
         cv::Mat gray, b_mat;
         cv::cvtColor(src, gray, type);
+
 #if DEBUG_IMG_FA && 0
         if (imshow_show) imshow("gray", gray);
 #endif
@@ -237,10 +328,29 @@ namespace Armor {
 
         cv::threshold(gray, b_mat, 100, 255, cv::ThresholdTypes::THRESH_BINARY);
 //      cv::threshold(gray, b_mat, 100, 255, cv::ThresholdTypes::THRESH_OTSU);
+
 #if DEBUG_IMG_FA && 0
         if (imshow_show) imshow("thr", b_mat);
 #endif
         FinderArmor_tw(2);
+
+#if DEBUG_IMG_FA || DEBUG_VIDEO_FA
+
+        if (imshow_show) {
+#if  1 //使用灰度图 or 彩色图
+            imshow_mat_view = gray.clone();
+            c1to3(imshow_mat_view);
+#else
+            if (type == datas::FrameType::BGR) cv::cvtColor(src, imshow_mat_view, cv::COLOR_BGR2RGB);
+            else if (type == datas::FrameType::BayerRG) cv::cvtColor(src, imshow_mat_view, cv::COLOR_BayerRG2RGB);
+            else throw std::runtime_error("[FinderArmor] Bad src type: " + std::to_string(type));
+            cv::Mat channels[3];
+            cv::split(imshow_mat_view, channels);
+            for (auto &channel: channels)cv::equalizeHist(channel, channel);
+            cv::merge(channels, 3, imshow_mat_view);
+#endif
+        }
+#endif
 
 
         std::vector<std::vector<cv::Point>> contours;  //所有轮廓
@@ -255,6 +365,13 @@ namespace Armor {
         for (const auto &c: contours)rrs.push_back(cv::minAreaRect(c));
 
         FinderArmor_tw(4);
+
+        cv::Mat debug_111 = gray.clone();
+        c1to3(debug_111);
+        cv::drawContours(debug_111, contours, -1, cv::Scalar(255, 0, 255), 2);
+        for (size_t i = 0; i < contours.size(); i++)
+            cv::putText(debug_111, std::to_string((int) i),
+                        rrs[i].center, cv::FONT_HERSHEY_COMPLEX, 0.8, cv::Scalar(0, 255, 255));
 
 
         std::vector<size_t> goodIndex;//所有较好的轮廓下标
@@ -283,7 +400,7 @@ namespace Armor {
             for (size_t j = i + 1; j < goodIndex.size(); j++) {
                 const auto &jrr = rrs[goodIndex[j]];//j的旋转矩形
 
-                float jw = irr.size.width, jh = irr.size.height;
+                float jw = jrr.size.width, jh = jrr.size.height;
                 if (jw > jh)std::swap(jw, jh);
                 const auto sr = abs((irr.size.area() / jrr.size.area()) - 1);//面积比
                 const auto wr = abs((iw / jw) - 1);//宽比
@@ -326,26 +443,26 @@ namespace Armor {
         FinderArmor_tw(6);
 
 
-//        static auto t = std::to_string(time(nullptr));
-//        static int64_t index = 0;
-//        auto _index = std::to_string(++index);
-
-#if DEBUG_IMG_FA
+#if DEBUG_IMG_FA || DEBUG_VIDEO_FA
         std::vector<datas::ArmTargetInfo> bad_targets;
 #endif
 
-//        for (size_t i = 0; i < goodPair.size(); i++) {//将所有可能的装甲板做仿射变换提取图像
-        for (auto &p: goodPair) {//将所有可能的装甲板做仿射变换提取图像
+        for (auto &p: goodPair) {//计算好对的包围矩形
             const auto &r1 = rrs[p.i1], &r2 = rrs[p.i2];
-            cv::Point2f ps[8];
-            r1.points(ps), r2.points(ps + 4);
-            auto rr = cv::minAreaRect(std::vector<cv::Point2f>(ps, ps + 8));//装甲板 包围
-            if (rr.size.height < rr.size.width)//将高度设为装甲板的高度(原高度为灯条高度), 缩小宽度(减少两侧灯条)
-                rr.size.height = p.h, rr.size.width -= std::min(r1.size.width, r1.size.height) * 3;
-            else rr.size.width = p.h, rr.size.height -= std::min(r1.size.width, r1.size.height) * 3;
+            p.rr = getInnerRR(
+#if DEBUG_IMG_FA || DEBUG_VIDEO_FA
+                    imshow_mat_view,
+#endif
+                    r1, r2, p.h);//装甲板 包围
+        }
 
+
+        FinderArmor_tw(7);
+
+
+        for (auto &p: goodPair) {//将所有可能的装甲板做仿射变换提取图像
             cv::Mat mat;
-            affineTransform(gray, rr, mat, p.is_large ? arm_to_lg : arm_to_sm, p.angle);
+            affineTransform(gray, p.rr, mat, p.is_large ? arm_to_lg : arm_to_sm, p.angle);
 //            cv::equalizeHist(mat, mat);
 //            cv::imshow("target t " + std::to_string(i), mat);
             cv::threshold(mat, mat, 0, 255, cv::THRESH_OTSU);
@@ -353,77 +470,73 @@ namespace Armor {
             auto result_type = predict(mat, p.is_large);
 
             if (result_type != 0)
-                targets.push_back({rr, result_type, p.angle, p.is_large, p.bad});
-#if DEBUG_IMG_FA
+                targets.push_back({p.rr, result_type, p.angle, p.is_large, p.bad});
+#if DEBUG_IMG_FA || DEBUG_VIDEO_FA
             else
-                bad_targets.push_back({rr, result_type, p.angle, p.is_large, p.bad});
+                bad_targets.push_back({p.rr, result_type, p.angle, p.is_large, p.bad});
 #endif
-
-//            cv::imwrite("assets\\smat_" + t + "_" + _index + "_" + std::to_string(i) + ".png", mat);
-//            cv::imshow("target " + std::to_string(i), mat);//TODO
-//            predict(mat, p.is_large);
-//            cv::Mat debug_mat = mat.clone();
-//            static const auto dilateKernel = getStructuringElement(0, cv::Size(3, 3));
-//            cv::dilate(debug_mat, debug_mat, dilateKernel, cv::Point(-1, -1), 1);
-//            c1to3(debug_mat);
-//            cv::putText(debug_mat, std::to_string(predict(mat, p.is_large)) + " " + std::to_string(p.bad),
-//                        mat.size() / 2, cv::FONT_HERSHEY_COMPLEX,
-//                        0.5, cv::Scalar(255, 0, 100));
-//            cv::imshow("target x " + std::to_string(i), debug_mat);
         }
-        FinderArmor_tw(7);
+        FinderArmor_tw(8);
 
-
-//        static std::list<double> all_fps;
-//        static long double cnt_fps;
-
-//        auto fps = 1 / ((t_5 - t_0) / cv::getTickFrequency());
-//        all_fps.push_back(fps), cnt_fps += fps;
-//        if (all_fps.size() > 10) {
-//            cnt_fps -= all_fps.front();
-//            all_fps.pop_front();
-//        }
-
-//        std::cout << (cnt_fps / all_fps.size()) << " " << fps << out_tdiff(t_1, t_0) << out_tdiff(t_2, t_1)
-//                  << out_tdiff(t_3, t_2)
-//                  << out_tdiff(t_4, t_3) << out_tdiff(t_5, t_4) << std::endl;
-
-#if DEBUG_IMG_FA
+#if DEBUG_IMG_FA || DEBUG_VIDEO_FA
         if (imshow_show) {
             DEBUG_nowTime(t_end);
             auto fps = 1 / ((t_end - imshow_now) / cv::getTickFrequency());
 
-            cv::Mat img = gray.clone();
-//            if (type == datas::FrameType::BGR) {
-//                cv::cvtColor(src, img, cv::COLOR_BGR2RGB);
-//            } else if (type == datas::FrameType::BayerRG) {
-//                cv::cvtColor(src, img, cv::COLOR_BayerRG2RGB);
-//            } else throw std::runtime_error("[FinderArmor] Bad src type: " + std::to_string(type));
-            c1to3(img);
-//            cv::Mat channels[3];
-//            cv::split(img, channels);
-//            for (int i = 0; i < 3; i++)cv::equalizeHist(channels[i], channels[i]);
-//            cv::merge(channels, 3, img);
-            cv::drawContours(img, contours, -1, cv::Scalar(0, 255, 0), 2);
+
+            static const auto color_all_c = cv::Scalar(0, 255, 255);//所有轮廓
+            static const auto color_good_c = cv::Scalar(255, 255, 0);//好轮廓
+            static const auto color_target = cv::Scalar(0, 255, 0);//好目标
+            static const auto color_bad_target = cv::Scalar(0, 0, 255);//坏目标
+            static const auto color_fps = cv::Scalar(255, 0, 255);//帧率
+            //所有轮廓
+            cv::drawContours(imshow_mat_view, contours, -1, color_all_c, 2);
+            for (const auto &index: goodIndex)
+                cv::drawContours(imshow_mat_view, contours, index, color_good_c, 2);
             for (size_t i = 0; i < targets.size(); i++) {
                 const auto &t = targets[i];
-                cv::putText(img,
-                            std::to_string((int) i) + " " + std::to_string((int) t.type) + " " + std::to_string(t.bad),
-                            t.target.center, cv::FONT_HERSHEY_COMPLEX, 0.8, cv::Scalar(255, 0, 255));
-                drawRotatedRect(img, t.target, cv::Scalar(0, 255, 0), 5, 16);
+                cv::putText(imshow_mat_view,
+                            std::to_string((int) t.type),
+                            t.target.center, cv::FONT_HERSHEY_COMPLEX, 0.8, color_target);
+                drawRotatedRect(imshow_mat_view, t.target, color_target, 5, 16);
             }
             for (size_t i = 0; i < bad_targets.size(); i++) {
                 const auto &t = bad_targets[i];
-                cv::putText(img, std::to_string((int) i) + " " + std::to_string(t.bad),
-                            t.target.center, cv::FONT_HERSHEY_COMPLEX, 0.8, cv::Scalar(255, 0, 0));
-                drawRotatedRect(img, t.target, cv::Scalar(0, 0, 255), 5, 16);
+                drawRotatedRect(imshow_mat_view, t.target, color_bad_target, 5, 16);
             }
-            cv::putText(img, "fps:" + std::to_string(fps), cv::Size(0, 30),
-                        cv::FONT_HERSHEY_COMPLEX, 0.8, cv::Scalar(255, 0, 100));
-//            cv::imshow("view", img);
-            writer->write(img);
+            cv::putText(imshow_mat_view,
+                        "fps:" + std::to_string((int) fps)
+                        + ", good: " + std::to_string(goodIndex.size())
+                        + "; " + std::to_string(targets.size()) + "/" + std::to_string(goodPair.size()),
+                        cv::Size(0, 30), cv::FONT_HERSHEY_COMPLEX, 0.8, color_fps);
+#if DEBUG_VIDEO_FA
+            writer->write(imshow_mat_view);
+#endif
+#if DEBUG_IMG_FA
+
+            cv::imshow("view", imshow_mat_view);
+            auto key = cv::waitKey(1);
+            if (key == 32) {//空格
+                static const auto ti = std::to_string(time(nullptr));
+                static int frame_id = 0;
+                auto frame_id_str = std::to_string(frame_id);
+                int id = 0;
+                for (const auto &t: targets) {
+                    cv::Mat mat;
+                    affineTransform(gray, t.target, mat, t.is_large ? arm_to_lg : arm_to_sm, t.angle);
+                    cv::threshold(mat, mat, 0, 255, cv::THRESH_OTSU);
+                    cv::imwrite("assets/sub_" + ti + "_" + frame_id_str + "_" + std::to_string(id++) + "_good.jpg",
+                                mat);
+                }
+                for (const auto &t: bad_targets) {
+                    cv::Mat mat;
+                    affineTransform(gray, t.target, mat, t.is_large ? arm_to_lg : arm_to_sm, t.angle);
+                    cv::threshold(mat, mat, 0, 255, cv::THRESH_OTSU);
+                    cv::imwrite("assets/sub_" + ti + "_" + frame_id_str + "_" + std::to_string(id++) + "_bad.jpg", mat);
+                }
+            }
+#endif
         }
-        if (imshow_show)cv::waitKey(1);
 #endif
     }
 
