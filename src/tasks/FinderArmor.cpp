@@ -371,14 +371,6 @@ namespace Armor {
 
         FinderArmor_tw(4);
 
-        cv::Mat debug_111 = gray.clone();
-        c1to3(debug_111);
-        cv::drawContours(debug_111, contours, -1, cv::Scalar(255, 0, 255), 2);
-        for (size_t i = 0; i < contours.size(); i++)
-            cv::putText(debug_111, std::to_string((int) i),
-                        rrs[i].center, cv::FONT_HERSHEY_COMPLEX, 0.8, cv::Scalar(0, 255, 255));
-
-
         std::vector<size_t> goodIndex;//所有较好的轮廓下标
         goodIndex.reserve(rrs.size());
         for (size_t i = 0; i < rrs.size(); i++) {//初步筛选
