@@ -149,7 +149,7 @@ namespace Armor {
      * @return 灯条靠近装甲板一侧的中心点
      */
     FORCE_INLINE cv::Point2f
-    getLightSideCenter(const cv::RotatedRect &light, const cv::Point2f *const ps, const cv::Point2f &center) {
+    getLightSideCenter(const cv::RotatedRect &light, const std::vector<cv::Point2f> &ps, const cv::Point2f &center) {
         size_t min_i = 0;//最近点下标
         auto min_d = distanceSquare(center, ps[min_i]);//最近点距离平方
         for (size_t i = 1; i < 4; i++) {
@@ -170,21 +170,22 @@ namespace Armor {
      * @param r2 rr2
      * @return 包围2个旋转矩形内部区域的旋转矩形
      */
-    FORCE_INLINE cv::RotatedRect
-    getInnerRR(
+    FORCE_INLINE cv::RotatedRect getInnerRR(
 #if DEBUG_VIDEO_FA || DEBUG_IMG_FA
             const cv::Mat &mat,
 #endif
-            const cv::RotatedRect &r1, const cv::RotatedRect &r2, float set_height) {
-        cv::Point2f ps[8];
-        r1.points(ps), r2.points(ps + 4);
-        //找出最小的四个点
+            const cv::RotatedRect &r1, const cv::RotatedRect &r2,
+            const std::vector<std::vector<cv::Point2f>> &rr_points, const size_t &ri1, const size_t &ri2,
+            float set_height) {
         cv::Point2f center(0, 0);
-        for (const auto &point: ps) center += point;
+        for (const auto &point: rr_points[ri1]) center += point;
+        for (const auto &point: rr_points[ri2]) center += point;
         center /= 8;
 
-        ps[0] = getLightSideCenter(r1, ps, center);
-        ps[1] = getLightSideCenter(r2, ps + 4, center);
+        cv::Point2f ps[] = {
+                getLightSideCenter(r1, rr_points[ri1], center),
+                getLightSideCenter(r2, rr_points[ri2], center)
+        };
 
 #if DEBUG_VIDEO_FA || DEBUG_IMG_FA
         if (!mat.empty()) {
@@ -434,24 +435,26 @@ namespace Armor {
                                    });
             }
         }
-        //TODO 二重循环遍历goodPair, 剔除内部包含其它ContourPair的ContourPair
-        std::sort(goodPair.begin(), goodPair.end(), [](const auto &l, const auto &r) { return l.bad < r.bad; });
-
         FinderArmor_tw(6);
 
-
-#if DEBUG_IMG_FA || DEBUG_VIDEO_FA
-        std::vector<datas::ArmTargetInfo> bad_targets;
-#endif
-
-        for (auto &p: goodPair) {//计算好对的包围矩形
+        std::vector<std::vector<cv::Point2f>> rr_points;//rrs的角点
+        rr_points.resize(rrs.size());
+        {
+            cv::Point2f ps[4];
+            for (auto &p: goodPair) {
+                auto &rp1 = rr_points[p.i1], &rp2 = rr_points[p.i2];
+                if (rp1.empty()) rrs[p.i1].points(ps), rp1.insert(rp1.end(), ps, ps + 4);
+                if (rp2.empty()) rrs[p.i2].points(ps), rp2.insert(rp2.end(), ps, ps + 4);
+            }
+        }
+        for (auto &p: goodPair) {//计算灯条组的包围矩形
             const auto &r1 = rrs[p.i1], &r2 = rrs[p.i2];
             p.skip = false;
             p.rr = getInnerRR(
 #if DEBUG_IMG_FA || DEBUG_VIDEO_FA
                     debug_show_extra ? imshow_mat_view : cv::Mat(),
 #endif
-                    r1, r2, p.h);//装甲板 包围
+                    r1, r2, rr_points, p.i1, p.i2, p.h);//装甲板 包围
         }
 
 
@@ -472,9 +475,21 @@ namespace Armor {
             }
         }
 
-
         FinderArmor_tw(8);
 
+
+        std::sort(goodPair.begin(), goodPair.end(), [](const auto &l, const auto &r) {
+            if (l.skip != r.skip)return r.skip;
+            return l.bad < r.bad;
+        });
+
+
+        FinderArmor_tw(9);
+
+
+#if DEBUG_IMG_FA || DEBUG_VIDEO_FA
+        std::vector<datas::ArmTargetInfo> bad_targets;
+#endif
 
         for (auto &p: goodPair) {//将所有可能的装甲板做仿射变换提取图像
             if (p.skip)continue;
@@ -493,7 +508,7 @@ namespace Armor {
                 bad_targets.push_back({p.rr, result_type, p.angle, p.is_large, p.bad});
 #endif
         }
-        FinderArmor_tw(9);
+        FinderArmor_tw(10);
 
 #if DEBUG_IMG_FA || DEBUG_VIDEO_FA
         if (imshow_show) {
