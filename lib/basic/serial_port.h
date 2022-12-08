@@ -319,6 +319,7 @@ FORCE_INLINE int require_serial_port_attr(serial_port_t device, serial_port_attr
 {
 	if (tcgetattr(device, attr_device) < 0)
 		return ERR_STATE_MAIN;
+    return SUCCESS;
 }
 
 //Note that different operating systems may behave differently for optional actions
@@ -326,6 +327,7 @@ FORCE_INLINE int apply_serial_port_attr(serial_port_t device, serial_port_attr_t
 {
 	if (tcsetattr(device, optional_actions, attr_device) < 0)
 		return ERR_STATE_MAIN;
+    return SUCCESS;
 }
 
 FORCE_INLINE int get_serial_port_attr_baud_rate(serial_port_attr_t* attr_device, speed_t* baud_rate)

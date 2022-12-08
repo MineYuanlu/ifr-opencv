@@ -145,6 +145,7 @@ int IOflush_serial_port(serial_port_t device, uint8_t flush_mode)
 		return tcflush(device, TCIFLUSH);
 	else if (flush_mode & FLUSH_O)
 		return tcflush(device, TCOFLUSH);
+    return SUCCESS;
 }
 
 int set_serial_port_attr_baud_rate(serial_port_attr_t* attr_device, speed_t baud_rate)

@@ -132,11 +132,11 @@ int set_serial_port_to_default(_Bool force_set)
 	//In the called function, 'serial_port_err' is set. No need to overwrite
 	if (set_serial_port_attributes(BAUD_RATE(115200), OPT_DATA_BITS_8, OPT_PARITY_NONE, OPT_STOP_BITS_1, force_set) < 0)
 		return ERR_BASIC_ATTR_FAILED;
-	if (serial_port_err = set_serial_port_nonblock_reading() < 0)
+	if ((serial_port_err = set_serial_port_nonblock_reading() < 0))
 		return ERR_SET_NONBLOCK_READING;
-	if (serial_port_err = IOflush_serial_port(cnt_device, FLUSH_I | FLUSH_O) < 0)
+	if ((serial_port_err = IOflush_serial_port(cnt_device, FLUSH_I | FLUSH_O) < 0))
 		return ERR_IOFLUSH;
-	if (serial_port_err = apply_serial_port_attr(cnt_device, &cnt_device_attr, TCSANOW) < 0)
+	if ((serial_port_err = apply_serial_port_attr(cnt_device, &cnt_device_attr, TCSANOW) < 0))
 		return ERR_CANNOT_APPLY_ATTR;
 	return SUCCESS;
 }

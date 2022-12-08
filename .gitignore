@@ -466,3 +466,13 @@ FodyWeavers.xsd
 /cmake-build-debug/
 /cmake-build-debug-/
 /cmake-build-debug-tx1/
+
+/cmake-build-*
+
+/aim.txt
+/assets/
+
+
+.idea
+!/docs/
+!/docs/arm/

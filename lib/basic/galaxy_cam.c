@@ -1,3 +1,4 @@
+#include <malloc.h>
 #include "galaxy_cam.h"
 
 static uint32_t cam_amount;

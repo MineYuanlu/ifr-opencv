@@ -1,0 +1,3 @@
+<component name="DependencyValidationManager">
+  <scope name="源码" pattern="file[test]:src//*" />
+</component>
