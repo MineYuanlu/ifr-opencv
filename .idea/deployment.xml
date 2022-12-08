@@ -15,6 +15,7 @@
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-tx1-" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-" />
+            <excludedPath local="true" path="$PROJECT_DIR$/assets/armor" />
           </excludedPaths>
         </serverdata>
       </paths>
@@ -25,11 +26,17 @@
           </mappings>
           <excludedPaths>
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-agx-remote-event-trace" />
+            <excludedPath local="true" path="$PROJECT_DIR$/lib/ifr-modules/Google_Test/lib" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-jyh-nano" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-release-agx" />
+            <excludedPath local="true" path="$PROJECT_DIR$/assets/armor" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-tx1-" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-release" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-release-agx" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-agx" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-jyh-nano" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-release" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-agx" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-tx1" />
@@ -56,6 +63,7 @@
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-tx1-" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-" />
+            <excludedPath local="true" path="$PROJECT_DIR$/assets/armor" />
           </excludedPaths>
         </serverdata>
       </paths>
