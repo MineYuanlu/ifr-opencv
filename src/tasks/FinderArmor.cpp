@@ -233,6 +233,8 @@ namespace Armor {
 #define IFR_FAV(name, min, max)
 #endif
 
+        VALUES_PREFIX int bmat_threshold = 100;//二值图的阈值
+
 
         VALUES_PREFIX float maxSizeRatio = 5000;//最大面积比(画面大小除以轮廓框大小), 超过此值则认为是噪声
         VALUES_PREFIX float minSizeRatio = 4;//最小面积比(画面大小除以轮廓框大小), 低于此值则认为非法框
@@ -263,11 +265,13 @@ namespace Armor {
         static const constexpr int arm_sm_ids_size = sizeof(arm_sm_ids) / sizeof(char);
         static const constexpr int arm_lg_ids_size = sizeof(arm_lg_ids) / sizeof(char);
 
-        VALUES_PREFIX auto model_threshold = 0.9F; // 模型结果阈值
+        VALUES_PREFIX auto model_threshold = 0.8F; // 模型结果阈值
 
         VALUES_PREFIX int debug_show_extra = 1;//调试: 是否展示额外数据
 
         void init() {
+            IFR_FAV(bmat_threshold, 0, 255)
+
             IFR_FAV(maxSizeRatio, 1, 100000)
             IFR_FAV(minSizeRatio, 1, 100000)
             IFR_FAV(maxAspectRatio, 1, 100)
@@ -332,7 +336,7 @@ namespace Armor {
         FinderArmor_tw(1);
 
 
-        cv::threshold(gray, b_mat, 100, 255, cv::ThresholdTypes::THRESH_BINARY);
+        cv::threshold(gray, b_mat, bmat_threshold, 255, cv::ThresholdTypes::THRESH_BINARY);
 //      cv::threshold(gray, b_mat, 100, 255, cv::ThresholdTypes::THRESH_OTSU);
 
 #if DEBUG_IMG_FA && 0
@@ -512,7 +516,7 @@ namespace Armor {
 
 #if DEBUG_IMG_FA || DEBUG_VIDEO_FA
         if (imshow_show) {
-            DEBUG_nowTime(t_end);
+            auto t_end = cv::getTickCount();
             auto fps = 1 / ((t_end - imshow_now) / cv::getTickFrequency());
 
 
