@@ -28,8 +28,8 @@ namespace Motor {
 
     void Output::outputConsole(const datas::OutInfo &info) const {
         long double delay = (cv::getTickCount() - info.receiveTick) * 1000.0 / cv::getTickFrequency();
-        printf("T: %d,vec: [%9.3f, %9.3f], a: %d, delay: %.3Lf\n", info.targetType, info.velocity.x,
-               info.velocity.y, info.activeCount, delay);
+        printf("T: %d,vec: [%9.3f, %9.3f], a: %d, delay: %.3Lf fps: %.0Lf\n", info.targetType, info.velocity.x,
+               info.velocity.y, info.activeCount, delay, 1000.0 / delay);
     }
 
 

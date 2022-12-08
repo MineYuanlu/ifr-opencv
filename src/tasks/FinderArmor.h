@@ -26,8 +26,8 @@ typedef cv::Mat XMat;
 
 
 namespace Armor {
-#define DEBUG_IMG_FA (DEBUG_IMG ||1) //FinderArmor 是否调试显示图像
-#define DEBUG_VIDEO_FA (DEBUG_IMG ||0) //FinderArmor 是否调试记录video
+#define DEBUG_IMG_FA (DEBUG_IMG || (DEBUG && 1)) //FinderArmor 是否调试显示图像
+#define DEBUG_VIDEO_FA (DEBUG_IMG || (DEBUG && 0)) //FinderArmor 是否调试记录video
 #if DEBUG_IMG_FA
 #define DEBUG_IMG_FA_R 0.1
 #define DEBUG_IMG_FA_WH (1280 * DEBUG_IMG_FA_R), (1024 * DEBUG_IMG_FA_R)
