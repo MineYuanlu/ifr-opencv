@@ -435,7 +435,8 @@ namespace Armor {
                                     + wr / maxBetweenWHRatio
                                     + hr / maxBetweenWHRatio
                                     + dis_a / maxAngleDistance
-                                    + miss_a
+                                    + miss_a,
+                                    false
                                    });
             }
         }
@@ -453,7 +454,6 @@ namespace Armor {
         }
         for (auto &p: goodPair) {//计算灯条组的包围矩形
             const auto &r1 = rrs[p.i1], &r2 = rrs[p.i2];
-            p.skip = false;
             p.rr = getInnerRR(
 #if DEBUG_IMG_FA || DEBUG_VIDEO_FA
                     debug_show_extra ? imshow_mat_view : cv::Mat(),
@@ -470,7 +470,7 @@ namespace Armor {
             cv::Point2f ps[4];
             p.rr.points(ps);
             std::vector<cv::Point2f> points(ps, ps + 4);
-            for (auto &sub: goodPair) {
+            for (const auto &sub: goodPair) {
                 if (cv::pointPolygonTest(points, rrs[sub.i1].center, false) >= 0 ||
                     cv::pointPolygonTest(points, rrs[sub.i2].center, false) >= 0) {
                     p.skip = true;
@@ -492,16 +492,18 @@ namespace Armor {
 
 
 #if DEBUG_IMG_FA || DEBUG_VIDEO_FA
-        std::vector<datas::ArmTargetInfo> bad_targets;
+        std::vector<datas::ArmTargetInfo> bad_targets;//坏目标(仅在debug时存在)
+        bad_targets.resize(goodPair.size());
 #endif
 
-        for (auto &p: goodPair) {//将所有可能的装甲板做仿射变换提取图像
+        targets.resize(goodPair.size());
+        for (const auto &p: goodPair) {//将所有可能的装甲板做仿射变换提取图像
             if (p.skip)continue;
             cv::Mat mat;
             affineTransform(gray, p.rr, mat, p.is_large ? arm_to_lg : arm_to_sm, p.angle);
 //            cv::equalizeHist(mat, mat);
 //            cv::imshow("target t " + std::to_string(i), mat);
-            cv::threshold(mat, mat, 0, 255, cv::THRESH_OTSU);
+            cv::threshold(mat, mat, 0, 1, cv::THRESH_OTSU);
 
             auto result_type = predict(mat, p.is_large);
 
@@ -517,7 +519,7 @@ namespace Armor {
 #if DEBUG_IMG_FA || DEBUG_VIDEO_FA
         if (imshow_show) {
             auto t_end = cv::getTickCount();
-            auto fps = 1 / ((t_end - imshow_now) / cv::getTickFrequency());
+            auto fps = 1 / (static_cast<double>(t_end - imshow_now) / cv::getTickFrequency());
 
 
             static const auto color_all_c = cv::Scalar(0, 255, 255);//所有轮廓
@@ -596,8 +598,8 @@ namespace Armor {
     char FinderArmor::predict(const cv::Mat &mat, bool is_lg) {
         using namespace Values;
         static const cv::Scalar mean = {0, 0, 0};
-        static const auto to1 = 1 / 255.0;
-        auto blob = cv::dnn::blobFromImage(mat, to1, is_lg ? arm_to_lg : arm_to_sm, mean, true, false);
+//      static const auto to1 = 1 / 255.0;
+        auto blob = cv::dnn::blobFromImage(mat, 1.0, is_lg ? arm_to_lg : arm_to_sm, mean, false, false);
         cv::Mat out;
         {
 //            std::unique_lock<std::mutex> lock(is_lg ? net_lg_mtx : net_sm_mtx);
@@ -609,7 +611,7 @@ namespace Armor {
         float max_v = out.at<float>(max);//最大置信度
 
         for (int i = 1, l = is_lg ? arm_lg_ids_size : arm_sm_ids_size; i < l; i++) {
-            auto v = out.at<float>(i);
+            const auto v = out.at<float>(i);
             if (v > max_v)max = i, max_v = v;
         }
         if (max_v < model_threshold)return 0;
