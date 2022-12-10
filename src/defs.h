@@ -42,9 +42,9 @@
 #define USE_GPU_SELECT(G, noG) noG
 #endif
 
-#if __OS__ == __OS_Windows__
+#if __OS__ == __OS_Windows__ && DEBUG
 #define TYPE_NAME(x) (((x*)NULL),( #x )) //验证type名称, 并返回字符串形式
-#elif __OS__ == __OS_Linux__
+#else
 #define TYPE_NAME(x) #x //验证type名称, 并返回字符串形式
 #endif
 
@@ -119,6 +119,11 @@ namespace datas {
         int activeCount;//激活数量
         cv::Point2f velocity;//移动矢量
         int64 receiveTick;// 接收到图像时的tick
+    };
+
+    /**游戏基础信息*/
+    struct GameBasicInfo {
+        bool gaming;
     };
 }
 #endif //OPENCV_TEST_DEFS_H

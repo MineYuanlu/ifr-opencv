@@ -9,6 +9,7 @@
 #include "tasks/FinderArmor.h"
 #include "tasks/Video.h"
 #include "tasks/Picture.h"
+#include "tasks/RefereeData.h"
 #include "api/API.h"
 #include "argparse.hpp"
 
@@ -70,6 +71,9 @@ int main(int argc, char const *argv[]) {
     ifr::Camera::registerTask();
     ifr::Video::registerTask();
     ifr::Picture::registerTask();
+
+    ifr::RefereeData::registerTask();
+
     EM::Finder::registerTask();
     EM::AimEM::registerTask();
     Motor::Output::registerTask();

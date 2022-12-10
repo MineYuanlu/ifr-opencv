@@ -45,12 +45,14 @@ namespace Motor {
         IFR_LOGGER("OutputEM", set_serial_port_attr_parity(&attr, OPT_PARITY_NONE));
         IFR_LOGGER("OutputEM", set_serial_port_attr_stop_bits(&attr, OPT_STOP_BITS(1)));
 #if __OS__ == __OS_Windows__
-        SIMPLE_INSPECT(set_serial_port_attr_read_settings(&attr, 0, 0, 0));
+        IFR_LOGGER("OutputEM", set_serial_port_attr_read_settings(&attr, 0, 0, 0));
 #else
         IFR_LOGGER("OutputEM", set_serial_port_attr_read_settings(&attr, 1, 1, 0));
 #endif
         IFR_LOGGER("OutputEM", apply_serial_port_attr(device, &attr, TCSANOW));
-        ifr::logger::log("OutputEM", "Serial port turned on successfully(" + port + ")", device);
+        if (is_device_valid(device))
+            ifr::logger::log("OutputEM", "Serial port turned on successfully(" + port + ")", device);
+        else throw std::runtime_error("[OutputEM] Can not open serial port: " + port);
     }
 
     void Output::close() {

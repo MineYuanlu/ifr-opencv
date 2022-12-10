@@ -12,10 +12,12 @@
 #include "plan/Plans.h"
 #include "msg/msg.hpp"
 
+#ifndef  OUTPUT_DEFAULT_PORT
 #if __OS__ == __OS_Windows__
 #define OUTPUT_DEFAULT_PORT "COM5"
 #elif __OS__ == __OS_Linux__
 #define OUTPUT_DEFAULT_PORT "/dev/ttyTHS2"
+#endif
 #endif
 namespace Motor {
 

@@ -40,24 +40,32 @@ endif ()
 #寻找CUDA库
 find_package(CUDA REQUIRED)
 message(STATUS "CUDA version: ${CUDA_VERSION}")
-message(STATUS "    include path: ${CUDA_INCLUDE_DIRS}")
-message(STATUS "    libraries: ${CUDA_LIBRARIES}")
+message(STATUS "     libraries: ${CUDA_LIBRARIES}")
+message(STATUS "     include path: ${CUDA_INCLUDE_DIRS}")
 set(CUDA_NVCC_FLAGS -G;-g;-std=c++${CMAKE_CXX_STANDARD}) # nvcc flags
 include_directories(${CUDA_INCLUDE_DIRS})
+link_directories(${CUDA_LIBRARY_DIRS})
 
 #寻找OpenCV库
 FIND_PACKAGE(OpenCV REQUIRED)
-# directory of opencv headers
+MESSAGE(STATUS "OpenCV version: ${OpenCV_VERSION}")
+MESSAGE(STATUS "       libraries: ${OpenCV_LIBRARY_DIRS}")
+MESSAGE(STATUS "       include path: ${OpenCV_INCLUDE_DIRS}")
 include_directories(${OpenCV_INCLUDE_DIRS})
-# directory of opencv library
 link_directories(${OpenCV_LIBRARY_DIRS})
+
+
+#寻找ZED库
+option(LINK_SHARED_ZED "Link with the ZED SDK shared executable" ON)
+find_package(ZED 3 REQUIRED)
+MESSAGE(STATUS "ZED version: ${ZED_VERSION}")
+MESSAGE(STATUS "    libraries: ${ZED_LIBRARY_DIR}")
+MESSAGE(STATUS "    include path: ${ZED_INCLUDE_DIRS}")
+include_directories(${ZED_INCLUDE_DIRS})
+link_directories(${ZED_LIBRARY_DIR})
 
 #打印调试信息
 MESSAGE(STATUS "Project: ${PROJECT_NAME}")
-MESSAGE(STATUS "OpenCV library status:")
-MESSAGE(STATUS "    version: ${OpenCV_VERSION}")
-MESSAGE(STATUS "    libraries: ${OpenCV_LIBS}")
-MESSAGE(STATUS "    include path: ${OpenCV_INCLUDE_DIRS}")
 
 
 include_directories(lib/UltraMultiThread/include)
@@ -73,9 +81,10 @@ aux_source_directory(${PROJECT_SOURCE_DIR}/lib/rapidjson LIB_JSON)
 aux_source_directory(${PROJECT_SOURCE_DIR}/lib/predict_needed LIB_PREDICT)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src SRCX)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/tasks SRC_TASK)
+aux_source_directory(${PROJECT_SOURCE_DIR}/src/datas SRC_DATAS)
 aux_source_directory(${PROJECT_SOURCE_DIR}/lib/ifr-modules LIB_MODULES)
 add_subdirectory(${PROJECT_SOURCE_DIR}/lib/ifr-modules/modules)
-add_executable(${PROJECT_NAME} ${SRCX} ${SRC_TASK} ${LIB_BASIC} ${LIB_WEB} ${LIB_JSON} ${LIB_PREDICT})
+add_executable(${PROJECT_NAME} ${SRCX} ${SRC_TASK} ${SRC_DATAS} ${LIB_BASIC} ${LIB_WEB} ${LIB_JSON} ${LIB_PREDICT})
 #添加链接库
 
 target_link_libraries(${PROJECT_NAME} common_modules)
