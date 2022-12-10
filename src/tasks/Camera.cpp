@@ -23,13 +23,13 @@ namespace ifr {
             );
             Camera::instance->feed_dog = true;
 #if DEBUG
-            static uint64 nextId = pFrame->nFrameID;//更新ID
-            if (nextId != pFrame->nFrameID)
-                std::cout << "[相机] 跳跃ID: " << nextId << ' ' << pFrame->nTimestamp << " " << pFrame->pImgBuf
-                          << " "
-                          << pFrame->nImgSize
-                          << std::endl;
-            nextId = pFrame->nFrameID + 1;
+//            static uint64 nextId = pFrame->nFrameID;//更新ID
+//            if (nextId != pFrame->nFrameID)
+//                std::cout << "[相机] 跳跃ID: " << nextId << ' ' << pFrame->nTimestamp << " " << pFrame->pImgBuf
+//                          << " "
+//                          << pFrame->nImgSize
+//                          << std::endl;
+//            nextId = pFrame->nFrameID + 1;
 #endif
 
         }
