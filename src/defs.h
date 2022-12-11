@@ -48,6 +48,24 @@
 #define TYPE_NAME(x) #x //验证type名称, 并返回字符串形式
 #endif
 
+#ifdef __GNUC__
+/* GCC's offsetof() macro is broken in C++ for versions <= 4.9.0 when
+   array indexes are not known at compile time.
+   See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=14932
+   Clang works fine. Not sure about other compilers.
+   Work around: good old-fashioned null pointer arithmetic...
+
+   当版本<= 4.9.0时，GCC的offsetof()宏在c++中被破坏
+   数组索引在编译时是未知的。
+   参见https://gcc.gnu.org/bugzilla/show_bug.cgi?id=14932
+   Clang效果很好。不确定其他编译器。
+   解决方法:良好的老式空指针算法
+ */
+#define OFFSETOF(tp, expr) (((uint64_t)(&((tp *)0)->expr)) - ((uint64_t)((tp *)0)))
+#else
+#define OFFSETOF(tp, expr) offsetof(tp, expr)
+#endif
+
 
 namespace datas {
     /**
