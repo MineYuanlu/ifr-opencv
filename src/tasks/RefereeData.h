@@ -100,7 +100,7 @@ namespace ifr {
          * @return 读取是否成功(简化返回值)
          */
         template<class T>
-        FORCE_INLINE bool sp_readT(const serial_port_t &device, const T &dst) {
+        FORCE_INLINE bool sp_readT(const serial_port_t &device, T &dst) {
             return sp_read(device, (uint8_t *) &dst, sizeof(T));
         }
 
@@ -113,7 +113,7 @@ namespace ifr {
          * @return 读取是否成功(简化返回值)
          */
         template<class T>
-        FORCE_INLINE bool sp_readT(const serial_port_t &device, const T &dst, const size_t &offset) {
+        FORCE_INLINE bool sp_readT(const serial_port_t &device, T &dst, const size_t &offset) {
             return sp_read(device, (uint8_t *) &dst + offset, sizeof(T) - offset);
         }
 
@@ -213,16 +213,61 @@ namespace ifr {
                                        to_string(frameHeader.data_length) + " <-> " + to_string(sizeof(T)));
             }
             T t;
-            serial_port_read(device, (uint8_t *) &t, sizeof(T));
+            if (!sp_readT(device, t)) {
+                ok = false;
+                return t;
+            };
 
 
             uint16_t tail;
-            serial_port_read(device, (uint8_t *) &tail, sizeof(decltype(tail)));
+            if (!sp_readT(device, tail)) {
+                ok = false;
+                return t;
+            };
             static auto table = CRC::CRC_16_ARC().MakeTable();
             auto crc = CRC::Calculate(&frameHeader, 1 + 2 + 1, table);
             ok = crc == tail;
 
             return t;
+        }
+
+        /**跳过指定长度的内容*/
+        void skip(size_t size) {
+            static auto *const dst = new uint8_t[256];
+            sp_read(device, dst, size);
+        }
+
+        /**
+         * 跳过帧内容(及帧尾)
+         * @param[in] frameHeader 帧头数据
+         */
+        void skipBody(const FrameHeader &frameHeader) {
+            skip(frameHeader.data_length + 2);
+        }
+
+        inline bool handleStuI(const FrameHeader &frameHeader, const uint16_t &cmd_id, bool &crc_pass,
+                               RefereeSystem::Package::StuInteractiveData &data) {
+            using namespace RefereeSystem::Package;
+            if (!sp_readT(device, data.head))return false;
+            switch (data.head.data_cmd_id) {
+#define IFR_REFEREEDATA_STUI_SW(type) \
+                case StuInteractiveDataBody::type::ID: {\
+                    auto sub_body = make_shared<StuInteractiveDataBody::type>();\
+                    if (!sp_readT<StuInteractiveDataBody::type>(device, *sub_body))return false;\
+                    data.body = sub_body;\
+                    return true;\
+                }
+                IFR_REFEREEDATA_STUI_SW(Custom_SentryStatus)
+                IFR_REFEREEDATA_STUI_SW(Delete)
+                IFR_REFEREEDATA_STUI_SW(Draw1)
+                IFR_REFEREEDATA_STUI_SW(Draw2)
+                IFR_REFEREEDATA_STUI_SW(Draw5)
+                IFR_REFEREEDATA_STUI_SW(Draw7)
+                IFR_REFEREEDATA_STUI_SW(DrawChar)
+#undef IFR_REFEREEDATA_STUI_SW
+                default:skip(frameHeader.data_length + 2 - sizeof(StuInteractiveData::head));
+                    return false;
+            }
         }
 
     public:
@@ -237,10 +282,15 @@ IFR_REFEREEDATA(GameResult)\
 IFR_REFEREEDATA(GameRobotHP)\
 //所有的裁判系统数据包
 
+//定义接口
 #define IFR_REFEREEDATA(type) static const std::string io_##type = #type ; \
             description.io[io_##type] = {TYPE_NAME(RefereeSystem::Package::type), "输出数据: " #type, false};
             IFR_REFEREEDATA_ALL_PACKAGE
+            static const std::string io_StuInteractiveData = "StuInteractiveData";
+            description.io[io_StuInteractiveData] = {TYPE_NAME(RefereeSystem::Package::StuInteractiveData),
+                                                     "输出数据: StuInteractiveData", false};
 #undef IFR_REFEREEDATA
+
             description.args[arg_port] = {"串口", OUTPUT_DEFAULT_PORT, ifr::Plans::TaskArgType::STR};
 
             ifr::Plans::registerTask("Referee Data", description, [](auto io, auto args, auto state, auto cb) {
@@ -248,30 +298,49 @@ IFR_REFEREEDATA(GameRobotHP)\
 
                 RefereeData rd(args[arg_port]);
 
+                //注册发布者
 #define IFR_REFEREEDATA(type) ifr::Msg::Publisher<RefereeSystem::Package::type> pub_##type(args[io_##type]);
                 IFR_REFEREEDATA_ALL_PACKAGE
+                ifr::Msg::Publisher<RefereeSystem::Package::StuInteractiveData>
+                        pub_StuInteractiveData(args[io_StuInteractiveData]);
 #undef IFR_REFEREEDATA
                 ifr::Plans::Tools::finishAndWait(cb, state, 1);
+                //锁定发布者
 #define IFR_REFEREEDATA(type) pub_##type.lock(false);
                 IFR_REFEREEDATA_ALL_PACKAGE
+                pub_StuInteractiveData.lock(false);
 #undef IFR_REFEREEDATA
                 cb(2);
 
-                FrameHeader data_length{};//帧头
+                FrameHeader frameHeader{};//帧头
                 uint16_t cmd_id = -1;//命令ID  -1 代表第一次读取
                 bool crc_pass;//crc校验是否通过
                 while (*state < 3) {
                     try {
-                        if (rd.readHead(data_length, cmd_id))
+                        if (rd.readHead(frameHeader, cmd_id))
                             switch (cmd_id) {
+                                //处理数据包
 #define IFR_REFEREEDATA(type) case RefereeSystem::Package::type::ID:{            \
-auto body=rd.readBody<RefereeSystem::Package::type>(data_length,cmd_id,crc_pass);\
+if (!pub_##type.hasSubscriber()) {rd.skipBody(frameHeader);break;}               \
+auto body=rd.readBody<RefereeSystem::Package::type>(frameHeader,cmd_id,crc_pass);\
 if (crc_pass) pub_##type.push(body);                                             \
 break;                                                                           \
 }
                                 IFR_REFEREEDATA_ALL_PACKAGE
+
+                                case RefereeSystem::Package::StuInteractiveDataHead::ID: {
+                                    if (!pub_StuInteractiveData.hasSubscriber()) {
+                                        rd.skipBody(frameHeader);
+                                        break;
+                                    }
+                                    RefereeSystem::Package::StuInteractiveData data;
+                                    if (rd.handleStuI(frameHeader, cmd_id, crc_pass, data))
+                                        pub_StuInteractiveData.push(data);
+                                    break;
+                                }
 #undef IFR_REFEREEDATA
-                                default:break;
+                                default:rd.skipBody(frameHeader);
+                                    break;
                             };
                         cmd_id = 0;//重置cmd id
                     } catch (ifr::Msg::MessageError_Broke &) { break; }

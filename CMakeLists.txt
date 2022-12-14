@@ -76,15 +76,13 @@ include_directories(lib/ifr-modules/modules)
 
 
 aux_source_directory(${PROJECT_SOURCE_DIR}/lib/basic LIB_BASIC)
-aux_source_directory(${PROJECT_SOURCE_DIR}/lib/web LIB_WEB)
-aux_source_directory(${PROJECT_SOURCE_DIR}/lib/rapidjson LIB_JSON)
 aux_source_directory(${PROJECT_SOURCE_DIR}/lib/predict_needed LIB_PREDICT)
+aux_source_directory(${PROJECT_SOURCE_DIR}/lib/ifr-modules LIB_MODULES)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src SRCX)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/tasks SRC_TASK)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/datas SRC_DATAS)
-aux_source_directory(${PROJECT_SOURCE_DIR}/lib/ifr-modules LIB_MODULES)
 add_subdirectory(${PROJECT_SOURCE_DIR}/lib/ifr-modules/modules)
-add_executable(${PROJECT_NAME} ${SRCX} ${SRC_TASK} ${SRC_DATAS} ${LIB_BASIC} ${LIB_WEB} ${LIB_JSON} ${LIB_PREDICT})
+add_executable(${PROJECT_NAME} ${SRCX} ${SRC_TASK} ${SRC_DATAS} ${LIB_BASIC} ${LIB_PREDICT} ${LIB_MODULES})
 #添加链接库
 
 target_link_libraries(${PROJECT_NAME} common_modules)

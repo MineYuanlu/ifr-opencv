@@ -46,21 +46,21 @@ static const constexpr int64_t MAX_INTERVAL=maxInterval_;\
             uint8_t game_progress() const { return (data1 >> 4) & 0xf; }
         };
 
-/**
-* @brief 比赛结果数据，比赛结束后发送
-* @details 命令码: 0x0002
-* @details 数据段长度: 1
-*/
+        /**
+        * @brief 比赛结果数据，比赛结束后发送
+        * @details 命令码: 0x0002
+        * @details 数据段长度: 1
+        */
         struct GameResult {
             RefereeSystem_BASIC(0x0002, -2, 0)
             uint8_t winner{};//0 平局 1 红方胜利 2 蓝方胜利
         };
 
-/**
-* @brief 比赛机器人血量数据，1Hz 周期发送
-* @details 命令码: 0x0003
-* @details 数据段长度: 28
-*/
+        /**
+        * @brief 比赛机器人血量数据，1Hz 周期发送
+        * @details 命令码: 0x0003
+        * @details 数据段长度: 28
+        */
         struct GameRobotHP {
             RefereeSystem_BASIC(0x0003, 1000, 2000)
             uint16_t red_1_robot_HP{};//红 1 英雄机器人血量，未上场以及罚下血量为 0
@@ -79,6 +79,47 @@ static const constexpr int64_t MAX_INTERVAL=maxInterval_;\
             uint16_t blue_7_robot_HP{};//蓝 7 哨兵机器人血量
             uint16_t blue_outpost_HP{};//蓝方前哨战血量
             uint16_t blue_base_HP{};//蓝方基地血量
+
+            /**
+                @brief 通过机器人ID获取对应的血量
+                @details 1：红方英雄机器人；
+                @details 2：红方工程机器人；
+                @details 3/4/5：红方步兵机器人；
+                @details 6：红方空中机器人；
+                @details 7：红方哨兵机器人；
+                @details 8：红方飞镖机器人；
+                @details 9：红方雷达站；
+                @details 101：蓝方英雄机器人；
+                @details 102：蓝方工程机器人；
+                @details 103/104/105：蓝方步兵机器人；
+                @details 106：蓝方空中机器人；
+                @details 107：蓝方哨兵机器人；
+                @details 108：蓝方飞镖机器人；
+                @details 109：蓝方雷达站。
+                @return -1: 无血量
+             */
+            inline uint16_t getByRobotId(const uint8_t &id) const {
+                switch (id) {
+                    case 1:return red_1_robot_HP;
+                    case 2:return red_2_robot_HP;
+                    case 3:return red_3_robot_HP;
+                    case 4:return red_4_robot_HP;
+                    case 5:return red_5_robot_HP;
+                    case 7:return red_7_robot_HP;
+                    case 101:return blue_1_robot_HP;
+                    case 102:return blue_2_robot_HP;
+                    case 103:return blue_3_robot_HP;
+                    case 104:return blue_4_robot_HP;
+                    case 105:return blue_5_robot_HP;
+                    case 107:return blue_7_robot_HP;
+                    case 6:
+                    case 8:
+                    case 9:
+                    case 106:
+                    case 108:
+                    case 109:return -1;
+                }
+            }
         };
 
         /**
@@ -214,20 +255,20 @@ static const constexpr int64_t MAX_INTERVAL=maxInterval_;\
             RefereeSystem_BASIC(0x0201, 1000 / 10, 1000 / 10 * 2)
             /**
                 本机器人 ID：
-                1：红方英雄机器人；
-                2：红方工程机器人；
-                3/4/5：红方步兵机器人；
-                6：红方空中机器人；
-                7：红方哨兵机器人；
-                8：红方飞镖机器人；
-                9：红方雷达站；
-                101：蓝方英雄机器人；
-                102：蓝方工程机器人；
-                103/104/105：蓝方步兵机器人；
-                106：蓝方空中机器人；
-                107：蓝方哨兵机器人；
-                108：蓝方飞镖机器人；
-                109：蓝方雷达站。
+                @details 1：红方英雄机器人；
+                @details 2：红方工程机器人；
+                @details 3/4/5：红方步兵机器人；
+                @details 6：红方空中机器人；
+                @details 7：红方哨兵机器人；
+                @details 8：红方飞镖机器人；
+                @details 9：红方雷达站；
+                @details 101：蓝方英雄机器人；
+                @details 102：蓝方工程机器人；
+                @details 103/104/105：蓝方步兵机器人；
+                @details 106：蓝方空中机器人；
+                @details 107：蓝方哨兵机器人；
+                @details 108：蓝方飞镖机器人；
+                @details 109：蓝方雷达站。
              */
             uint8_t robot_id{};
             uint8_t robot_level{};//机器人等级： 1：一级；2：二级；3：三级。
@@ -438,18 +479,150 @@ static const constexpr int64_t MAX_INTERVAL=maxInterval_;\
 
 
         };
+        namespace StuInteractiveDataBody {
+#define RefereeSystem_SDB_BASIC(id) static const constexpr uint16_t ID=id;
 
-        ///机器人间交互数据
-        template<size_t n>
-        struct StuInteractiveDataBody {
-            uint8_t data[n];
+            //自定义数据包: (操作手或其他机器人指定的)哨兵状态
+            struct Custom_SentryStatus {
+                RefereeSystem_SDB_BASIC(0x0200)
+                uint8_t type = 0;
+
+                /**
+                 * @brief
+                 * @details 0: 自由模式
+                 * @details 1: P (保护基地)
+                 * @details 2: S (自保)
+                 * @details 3: N (默认)
+                 * @details 4: A (攻击)
+                 */
+                inline uint8_t getStatus() const { return type & 0x7; }
+
+//                /**
+//                 * 获取维持此状态的持续时间
+//                 * @details 最大31s
+//                 * @return 0 = 永久, 其他: 秒
+//                 */
+//                inline uint8_t getTime() const { return (type >> 3) & 0x1f; }
+            };
+
+            ///图形数据
+            struct GraphicData {
+                uint8_t graphic_name[3] = {};//
+                uint32_t data1{};//图形配置 1
+                uint32_t data2{};//图形配置 2
+                uint32_t data3{};//图形配置 3
+
+                /**
+                    @图形操作 0：空操作
+                    @图形操作 1：增加
+                    @图形操作 2：修改
+                    @图形操作 3：删除
+                 */
+                inline uint8_t getOperation() const { return data1 & 0x7; }
+
+                /**
+                    @图形类型 0：直线
+                    @图形类型 1：矩形
+                    @图形类型 2：整圆
+                    @图形类型 3：椭圆
+                    @图形类型 4：圆弧
+                    @图形类型 5：浮点数
+                    @图形类型 6：整型数
+                    @图形类型 7：字符
+                 */
+                inline uint8_t getType() const { return (data1 >> 3) & 0x7; }
+
+                ///图层数，0~9
+                inline uint8_t getLayer() const { return (data1 >> 6) & 0xf; }
+
+                /**
+                    @颜色 0：红蓝主色
+                    @颜色 1：黄色
+                    @颜色 2：绿色
+                    @颜色 3：橙色
+                    @颜色 4：紫红色
+                    @颜色 5：粉色
+                    @颜色 6：青色
+                    @颜色 7：黑色
+                    @颜色 8：白色
+                 */
+                inline uint8_t getColor() const { return (data1 >> 10) & 0xf; }
+
+                ///起始角度，单位：°，范围[0,360]；
+                inline uint8_t getStartAngle() const { return (data1 >> 14) & 0x1ff; }
+
+                ///终止角度，单位：°，范围[0,360]。
+                inline uint8_t getEndAngle() const { return (data1 >> 23) & 0x1ff; }
+
+                ///线宽
+                inline uint8_t getLineWidth() const { return data2 & 0x3ff; }
+
+                ///起点 x 坐标
+                inline uint8_t getStartX() const { return (data2 >> 10) & 0x7ff; }
+
+                ///起点 y 坐标
+                inline uint8_t getStartY() const { return (data2 >> 21) & 0x7ff; }
+
+                ///字体大小或者半径
+                inline uint8_t getFontSize() const { return data3 & 0x3ff; }
+
+                ///终点 x 坐标
+                inline uint8_t getEndX() const { return (data3 >> 10) & 0x7ff; }
+
+                ///终点 y 坐标
+                inline uint8_t getEndY() const { return (data3 >> 21) & 0x7ff; }
+
+            };
+
+            ///客户端删除图形
+            struct Delete {
+                RefereeSystem_SDB_BASIC(0x0100)
+                /**
+                 * 图形操作
+                 * @details 0: 空操作；
+                 * @details 1: 删除图层；
+                 * @details 2: 删除所有；
+                 */
+                uint8_t operate_tpye{};
+                uint8_t layer{};//图层数：0~9
+            };
+            template<size_t n>
+            struct DrawN {
+                GraphicData graphic_data[n];
+            };
+            ///客户端绘制一个图形
+            struct Draw1 {
+                RefereeSystem_SDB_BASIC(0x0101)
+                DrawN<1> data;
+            };
+            struct Draw2 {
+                RefereeSystem_SDB_BASIC(0x0102)
+                DrawN<2> data;
+            };
+            struct Draw5 {
+                RefereeSystem_SDB_BASIC(0x0103)
+                DrawN<5> data;
+            };
+            struct Draw7 {
+                RefereeSystem_SDB_BASIC(0x0104)
+                DrawN<7> data;
+            };
+            struct DrawChar {
+                RefereeSystem_SDB_BASIC(0x0110)
+                GraphicData graphic_data;
+                uint8_t data[30];
+            };
+#undef RefereeSystem_SDB_BASIC
+        }
+
+        /**
+         * @brief 机器人间交互数据，发送方触发发送
+         * @details 头部数据和实际数据的整合
+         */
+        struct StuInteractiveData {
+            StuInteractiveDataHead head;
+            std::shared_ptr<void> body{};
         };
-        typedef StuInteractiveDataBody<2> StuInteractiveDataBodyRemove;//客户端删除图形
-        typedef StuInteractiveDataBody<15> StuInteractiveDataBodyDraw1;//客户端绘制一个图形
-        typedef StuInteractiveDataBody<30> StuInteractiveDataBodyDraw2;//客户端绘制二个图形
-        typedef StuInteractiveDataBody<75> StuInteractiveDataBodyDraw5;//客户端绘制五个图形
-        typedef StuInteractiveDataBody<105> StuInteractiveDataBodyDraw7;//客户端绘制七个图形
-        typedef StuInteractiveDataBody<45> StuInteractiveDataBodyDrawChar;//客户端绘制字符图形
         /**
          * @brief 自定义控制器交互数据接口，通过客户端触发发送，上限 30Hz
          * @details 命令码: 0x0302
@@ -494,17 +667,6 @@ static const constexpr int64_t MAX_INTERVAL=maxInterval_;\
             uint16_t target_robot_ID{};
         };
 
-        /**
-         * @brief 键盘、鼠标信息，通过图传串口发送
-         * @details 命令码: 0x0304
-         * @details 数据段长度: 12
-         */
-        struct ClientMapCommand {
-            RefereeSystem_BASIC(0x0305, 1000 / 10, 1000 / 10 * 2)
-            uint16_t target_robot_ID{};//目标机器人 ID
-            float target_position_x{};//目标 x 位置坐标，单位 m 当 x,y 超出界限时则不显示。
-            float target_position_y{};//目标 y 位置坐标，单位 m 当 x,y 超出界限时则不显示。
-        };
 
         /**
          * @brief 客户端小地图接收信息
@@ -556,18 +718,37 @@ static const constexpr int64_t MAX_INTERVAL=maxInterval_;\
 
         };
 
+        /**
+         * @brief 键盘、鼠标信息，通过图传串口发送
+         * @details 命令码: 0x0304
+         * @details 数据段长度: 12
+         */
+        struct ClientMapCommand {
+            RefereeSystem_BASIC(0x0305, 1000 / 10, 1000 / 10 * 2)
+            uint16_t target_robot_ID{};//目标机器人 ID
+            float target_position_x{};//目标 x 位置坐标，单位 m 当 x,y 超出界限时则不显示。
+            float target_position_y{};//目标 y 位置坐标，单位 m 当 x,y 超出界限时则不显示。
+        };
+
 #undef RefereeSystem_BASIC
 #pragma pack()
+
+        /**
+         * 判断某个数据包是否有效
+         * @tparam T 数据包类型
+         * @param lstUpdate 最后一次更新数据包的tick(来自 cv::getTickCount()), 0为无数据
+         * @return 是否有效
+         */
+        template<class T>
+        FORCE_INLINE bool is_valid(const int64_t &lstUpdate) {
+            const auto now = cv::getTickCount();
+
+            if (T::INTERVAL == -2 && lstUpdate > 0) return true;
+            if (static_cast<double>(now - lstUpdate) / cv::getTickFrequency() < (T::MAX_INTERVAL / 1000.0))return true;
+            return false;
+        }
     }
 
-    template<class T>
-    FORCE_INLINE bool is_valid(const T &t, const int64_t &lstUpdate) {
-        const auto now = cv::getTickCount();
-//
-        if (T::INTERVAL == -2 && lstUpdate > 0) return true;
-        if (static_cast<double>(now - lstUpdate) / cv::getTickFrequency() < (T::MAX_INTERVAL / 1000.0))return true;
-        return false;
-    }
 
 }
 #endif //IFR_OPENCV_REFEREE_DATAS_H
