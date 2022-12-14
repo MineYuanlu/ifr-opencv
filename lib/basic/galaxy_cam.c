@@ -36,7 +36,7 @@ int32_t update_cam_list(void)
 		return ERR_MALLOC;
 	if ((status = GXGetAllDeviceBaseInfo(cam_info_list, &buffer_size)) != GX_STATUS_SUCCESS)
 		return ERR_GET_INFO_LIST;
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 uint32_t get_cam_amount(void)
@@ -52,7 +52,7 @@ int32_t get_galaxy_cam_SN(uint32_t device_index, char* device_SN)
 		return ERR_NO_SUCH_DEVICE;
 	else {
 		strcpy(device_SN, cam_info_list[device_index].szSN);
-		return SUCCESS;
+		return SUCCESS_CODE;
 	}
 }
 
@@ -87,7 +87,7 @@ int32_t open_galaxy_cam_by_SN(galaxy_cam_t* device, char* device_SN)
 	GXSetEnum(device->device_handle, GX_ENUM_BALANCE_WHITE_AUTO, GX_BALANCE_WHITE_AUTO_OFF);
 	GXSetEnum(device->device_handle, GX_ENUM_ACQUISITION_FRAME_RATE_MODE, GX_ACQUISITION_FRAME_RATE_MODE_ON);
 	GXSetEnum(device->device_handle, GX_ENUM_EXPOSURE_AUTO, GX_EXPOSURE_AUTO_OFF);
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 int32_t open_galaxy_cam_by_index(galaxy_cam_t* device, uint32_t device_index)
@@ -103,7 +103,7 @@ int32_t open_galaxy_cam_by_index(galaxy_cam_t* device, uint32_t device_index)
 	open_param.pszContent = buffer;//Avoid extra time and space using by strcpy
 	if (GXOpenDevice(&open_param, &device->device_handle) != GX_STATUS_SUCCESS)
 		return ERR_GALAXY_OPEN_FAILED;
-	if (get_galaxy_cam_SN(device_index - 1, buffer) != SUCCESS)
+	if (get_galaxy_cam_SN(device_index - 1, buffer) != SUCCESS_CODE)
 		return ERR_GET_SN_FAILED;
 	strcpy(device->SN, buffer);
 	if (GXSetEnum(device->device_handle, GX_ENUM_ACQUISITION_MODE, GX_ACQ_MODE_CONTINUOUS) != GX_STATUS_SUCCESS)
@@ -127,7 +127,7 @@ int32_t open_galaxy_cam_by_index(galaxy_cam_t* device, uint32_t device_index)
 	GXSetEnum(device->device_handle, GX_ENUM_BALANCE_WHITE_AUTO, GX_BALANCE_WHITE_AUTO_OFF);
 	GXSetEnum(device->device_handle, GX_ENUM_ACQUISITION_FRAME_RATE_MODE, GX_ACQUISITION_FRAME_RATE_MODE_ON);
 	GXSetEnum(device->device_handle, GX_ENUM_EXPOSURE_AUTO, GX_EXPOSURE_AUTO_OFF);
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 int32_t galaxy_cam_register_capture_callback(galaxy_cam_t* device, galaxy_capture_callback_t capture_callback)
@@ -247,7 +247,7 @@ int32_t close_galaxy_cam(galaxy_cam_t* device)
 	device->device_frame_data.pImgBuf = NULL;
 	if (GXCloseDevice(device->device_handle) != GX_STATUS_SUCCESS)
 		return ERR_CLOSE_FAILED;
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 __EXPORT_C_END

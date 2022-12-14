@@ -8,7 +8,7 @@
 #include "GxIAPI.h"
 #include "DxImageProc.h"
 
-#define SUCCESS                           0
+#define SUCCESS_CODE                      0
 #define ERR_MALLOC                     -128
 #define ERR_ENUMERATE_DEVICE           -127
 #define ERR_GET_INFO_LIST              -126

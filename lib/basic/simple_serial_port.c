@@ -16,7 +16,7 @@ __EXPORT_C_START
 int reset_error(void)
 {
 	serial_port_err = 0;
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 int get_last_error(void)
@@ -41,7 +41,7 @@ int enable_serial_port(char* device_str, _Bool force_open)
 	if ((serial_port_err = require_serial_port_attr(cnt_device, &cnt_device_attr)) < 0)
 		return ERR_REQUIRE_ATTR_FAILED;
 	is_device_opened = 1;
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 int disable_serial_port(void)
@@ -72,7 +72,7 @@ int get_serial_port_attributes(speed_t* baud_rate, uint8_t* data_bits, uint8_t* 
 	serial_port_err = get_serial_port_attr_stop_bits(&cnt_device_attr, stop_bits);
 	if (serial_port_err < 0)
 		return ERR_STOP_BITS_FAILED;
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 int set_serial_port_attributes(speed_t baud_rate, uint8_t data_bits, uint8_t parity, uint8_t stop_bits, _Bool force_set)
@@ -100,7 +100,7 @@ int set_serial_port_attributes(speed_t baud_rate, uint8_t data_bits, uint8_t par
 	serial_port_err = apply_serial_port_attr(cnt_device, &cnt_device_attr, TCSANOW);
 	if (serial_port_err < 0)
 		return ERR_CANNOT_APPLY_ATTR;
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 int set_serial_port_block_reading(void)
@@ -138,7 +138,7 @@ int set_serial_port_to_default(_Bool force_set)
 		return ERR_IOFLUSH;
 	if ((serial_port_err = apply_serial_port_attr(cnt_device, &cnt_device_attr, TCSANOW) < 0))
 		return ERR_CANNOT_APPLY_ATTR;
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 int __receive(uint8_t* dst, size_t size)

@@ -5,7 +5,7 @@
 
 #define DEVICE_NAME_MAX_LENGTH 50
 
-#define SUCCESS                        0
+#define SUCCESS_CODE                   0
 #define ERR_NAME_TOO_LONG             -1
 #define ERR_OPEN_PORT_FAILED          -2
 #define ERR_CANNOT_CLOSE_OPENED_PORT  -3

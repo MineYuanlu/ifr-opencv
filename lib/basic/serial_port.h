@@ -180,7 +180,7 @@
 #define OPT_PARITY(__value__) OPT_PARITY_##__value__
 #define OPT_BAUD_RATE(__value__) B(__value__)
 
-#define SUCCESS                 0
+#define SUCCESS_CODE            0
 #define ERR_FAILED             -1 //Nothing special. For APIs without details
 //ERR_FAILED must be -1
 #define ERR_NOT_IMPLEMENTED    -2
@@ -219,19 +219,19 @@ int apply_serial_port_attr(serial_port_t device, serial_port_attr_t* attr_device
 FORCE_INLINE int get_serial_port_attr_baud_rate(serial_port_attr_t* attr_device, speed_t* baud_rate)
 {
 	*baud_rate = (attr_device->__basic_state).BaudRate;
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 FORCE_INLINE int set_serial_port_attr_baud_rate(serial_port_attr_t* attr_device, speed_t baud_rate)
 {
 	(attr_device->__basic_state).BaudRate = baud_rate;
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 FORCE_INLINE int get_serial_port_attr_data_bits(serial_port_attr_t* device_attr, uint8_t* data_bits)
 {
 	*data_bits = (device_attr->__basic_state).ByteSize;
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 FORCE_INLINE int set_serial_port_attr_data_bits(serial_port_attr_t* device_attr, uint8_t data_bits)
@@ -241,7 +241,7 @@ FORCE_INLINE int set_serial_port_attr_data_bits(serial_port_attr_t* device_attr,
 //All call them data bits and you call them ByteSize???
 //Go to hell Microsoft I really have had enough of your f**king damn strange APIs
 	(device_attr->__basic_state).ByteSize = data_bits;
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 int get_serial_port_attr_parity(serial_port_attr_t* device_attr, uint8_t* parity);
@@ -259,7 +259,7 @@ FORCE_INLINE int get_serial_port_attr_read_settings(serial_port_attr_t* device_a
 	*arg1 = (device_attr->__timeouts).ReadIntervalTimeout;
 	*arg2 = (device_attr->__timeouts).ReadTotalTimeoutMultiplier;
 	*arg3 = (device_attr->__timeouts).ReadTotalTimeoutConstant;
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 FORCE_INLINE int set_serial_port_attr_read_settings(serial_port_attr_t* device_attr, read_setting_t arg1, read_setting_t arg2, read_setting_t arg3)
@@ -267,14 +267,14 @@ FORCE_INLINE int set_serial_port_attr_read_settings(serial_port_attr_t* device_a
 	(device_attr->__timeouts).ReadIntervalTimeout = arg1;
 	(device_attr->__timeouts).ReadTotalTimeoutMultiplier = arg2;
 	(device_attr->__timeouts).ReadTotalTimeoutConstant = arg3;
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 FORCE_INLINE int standardize_serial_port_attr(serial_port_attr_t* device_attr)
 {
 	(device_attr->__timeouts).WriteTotalTimeoutMultiplier = 0;
 	(device_attr->__timeouts).WriteTotalTimeoutConstant = 0;
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 FORCE_INLINE serial_port_t open_serial_port(char* device_str)
@@ -319,7 +319,7 @@ FORCE_INLINE int require_serial_port_attr(serial_port_t device, serial_port_attr
 {
 	if (tcgetattr(device, attr_device) < 0)
 		return ERR_STATE_MAIN;
-    return SUCCESS;
+    return SUCCESS_CODE;
 }
 
 //Note that different operating systems may behave differently for optional actions
@@ -327,13 +327,13 @@ FORCE_INLINE int apply_serial_port_attr(serial_port_t device, serial_port_attr_t
 {
 	if (tcsetattr(device, optional_actions, attr_device) < 0)
 		return ERR_STATE_MAIN;
-    return SUCCESS;
+    return SUCCESS_CODE;
 }
 
 FORCE_INLINE int get_serial_port_attr_baud_rate(serial_port_attr_t* attr_device, speed_t* baud_rate)
 {
 	*baud_rate = cfgetospeed(attr_device);
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 //Note that for ubuntu, valid baud rates are lmited. Use B(e) can fix some bugs.
@@ -353,7 +353,7 @@ FORCE_INLINE int get_serial_port_attr_stop_bits(serial_port_attr_t* device_attr,
 		*stop_bits = OPT_STOP_BITS_2;
 	else
 		*stop_bits = OPT_STOP_BITS_1;
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 int set_serial_port_attr_stop_bits(serial_port_attr_t* device_attr, uint8_t stop_bits);
@@ -365,21 +365,21 @@ FORCE_INLINE int get_serial_port_attr_read_settings(serial_port_attr_t* device_a
 	*arg1 = device_attr->c_cc[VMIN];
 	*arg2 = device_attr->c_cc[VTIME];
 	*arg3 = 0;
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 FORCE_INLINE int set_serial_port_attr_read_settings(serial_port_attr_t* device_attr, read_setting_t arg1, read_setting_t arg2, read_setting_t arg3)
 {
 	device_attr->c_cc[VMIN] = arg1;
 	device_attr->c_cc[VTIME] = arg2;
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 FORCE_INLINE int standardize_serial_port_attr(serial_port_attr_t* device_attr)
 {
 	device_attr->c_oflag &= ~OPOST;
 	device_attr->c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 FORCE_INLINE serial_port_t open_serial_port(char* device_str)

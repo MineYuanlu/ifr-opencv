@@ -12,7 +12,7 @@ int IOflush_serial_port(serial_port_t device, uint8_t flush_mode)
 		return -(!PurgeComm(device, PURGE_RXCLEAR));
 	else if (flush_mode & FLUSH_O)
 		return -(!PurgeComm(device, PURGE_TXCLEAR));
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 int require_serial_port_attr(serial_port_t device, serial_port_attr_t* attr_device)
@@ -20,7 +20,7 @@ int require_serial_port_attr(serial_port_t device, serial_port_attr_t* attr_devi
 	_Bool status_main = GetCommState(device, &(attr_device->__basic_state));
 	_Bool status_sec = GetCommTimeouts(device, &(attr_device->__timeouts));
 	if (LIKELY(status_main && status_sec))
-		return SUCCESS;
+		return SUCCESS_CODE;
 	else if (status_main && !status_sec)
 		return ERR_STATE_SEC;
 	else if (!status_main && status_sec)
@@ -47,7 +47,7 @@ int apply_serial_port_attr(serial_port_t device, serial_port_attr_t* attr_device
 	_Bool status_main = SetCommState(device, &(attr_device->__basic_state));
 	_Bool status_sec = SetCommTimeouts(device, &(attr_device->__timeouts));
 	if (LIKELY(status_main && status_sec))
-		return SUCCESS;
+		return SUCCESS_CODE;
 	if (status_main && !status_sec)
 		return ERR_STATE_SEC;
 	if (!status_main && status_sec)
@@ -59,7 +59,7 @@ int get_serial_port_attr_parity(serial_port_attr_t* device_attr, uint8_t* parity
 {
 	if (LIKELY(!(device_attr->__basic_state).fParity)) {
 		*parity = OPT_PARITY_NONE;
-		return SUCCESS;
+		return SUCCESS_CODE;
 	}
 	switch ((device_attr->__basic_state).Parity) {
 	case EVENPARITY:
@@ -75,7 +75,7 @@ int get_serial_port_attr_parity(serial_port_attr_t* device_attr, uint8_t* parity
 		*parity = OPT_PARITY_NOT_IMPLEMENTED;
 		break;
 	}
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 int set_serial_port_attr_parity(serial_port_attr_t* device_attr, uint8_t parity)
@@ -98,7 +98,7 @@ int set_serial_port_attr_parity(serial_port_attr_t* device_attr, uint8_t parity)
 	default:
 		return ERR_INVALID_PARITY;
 	}
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 int get_serial_port_attr_stop_bits(serial_port_attr_t* device_attr, uint8_t* stop_bits)
@@ -114,7 +114,7 @@ int get_serial_port_attr_stop_bits(serial_port_attr_t* device_attr, uint8_t* sto
 		*stop_bits = OPT_STOP_BITS_NOT_IMPLEMENTED;
 		break;
 	}
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 int set_serial_port_attr_stop_bits(serial_port_attr_t* device_attr, uint8_t stop_bits)
@@ -131,7 +131,7 @@ int set_serial_port_attr_stop_bits(serial_port_attr_t* device_attr, uint8_t stop
 	default:
 		return ERR_INVALID_STOP_BITS;
 	}
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 #elif __OS__ == __OS_Linux__
@@ -145,7 +145,7 @@ int IOflush_serial_port(serial_port_t device, uint8_t flush_mode)
 		return tcflush(device, TCIFLUSH);
 	else if (flush_mode & FLUSH_O)
 		return tcflush(device, TCOFLUSH);
-    return SUCCESS;
+    return SUCCESS_CODE;
 }
 
 int set_serial_port_attr_baud_rate(serial_port_attr_t* attr_device, speed_t baud_rate)
@@ -182,7 +182,7 @@ int get_serial_port_attr_data_bits(serial_port_attr_t* device_attr, uint8_t* dat
 	default:
 		return ERR_FAILED;
 	}
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 int set_serial_port_attr_data_bits(serial_port_attr_t* device_attr, uint8_t data_bits)
@@ -204,7 +204,7 @@ int set_serial_port_attr_data_bits(serial_port_attr_t* device_attr, uint8_t data
 		device_attr->c_cflag |= CS8;
 		break;
 	}
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 int get_serial_port_attr_parity(serial_port_attr_t* device_attr, uint8_t* parity)
@@ -216,7 +216,7 @@ int get_serial_port_attr_parity(serial_port_attr_t* device_attr, uint8_t* parity
 			*parity = OPT_PARITY_EVEN;
 	} else
 		*parity = OPT_PARITY_NONE;
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 int set_serial_port_attr_parity(serial_port_attr_t* device_attr, uint8_t parity)
@@ -241,7 +241,7 @@ int set_serial_port_attr_parity(serial_port_attr_t* device_attr, uint8_t parity)
 	default:
 		return ERR_INVALID_PARITY;
 	}
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 int set_serial_port_attr_stop_bits(serial_port_attr_t* device_attr, uint8_t stop_bits)
@@ -256,7 +256,7 @@ int set_serial_port_attr_stop_bits(serial_port_attr_t* device_attr, uint8_t stop
 	default:
 		return ERR_INVALID_STOP_BITS;
 	}
-	return SUCCESS;
+	return SUCCESS_CODE;
 }
 
 #else
